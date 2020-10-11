@@ -20,7 +20,7 @@ func TestABIContract_Parse(t *testing.T) {
 			&ABI{
 				FunctionsMap: map[string]*FunctionDef{},
 				LogEventsMap: map[string]*LogEventDef{
-					string(stringToByte(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {
+					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {
 						Name: "PairCreated",
 						Parameters: []*LogParameter{
 							{Name: "token0", TypeName: "address", Indexed: true},
@@ -56,7 +56,7 @@ func TestABIContract_ParseFile(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := parseABI(test.filename)
+			_, err := ParseABI(test.filename)
 			if test.expectedErr == nil {
 				require.NoError(t, err)
 			} else {

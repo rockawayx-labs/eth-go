@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 )
 
-func parseABI(abiFilePath string) (*ABI, error) {
+func ParseABI(abiFilePath string) (*ABI, error) {
 	file, _ := ioutil.ReadFile(abiFilePath)
 
 	return parseABIFromBytes(file)

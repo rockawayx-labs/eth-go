@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func parseAST(astFilepath string) *ABI {
+func ParseAST(astFilepath string) *ABI {
 	file, _ := ioutil.ReadFile(astFilepath)
 	ast := map[string]interface{}{}
 	_ = json.Unmarshal([]byte(file), &ast)

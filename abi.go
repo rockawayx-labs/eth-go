@@ -15,13 +15,13 @@ type ABI struct {
 }
 
 
-func (a *ABI) findLog(topic []byte) *LogEventDef {
+func (a *ABI) FindLog(topic []byte) *LogEventDef {
 	zlog.Info("looking for log event def by topic", zap.Stringer("topic", Hash(topic)))
 
 	return a.LogEventsMap[string(topic)]
 }
 
-func (a *ABI) findFunction(methodHash []byte) *FunctionDef {
+func (a *ABI) FindFunction(methodHash []byte) *FunctionDef {
 	zlog.Info("looking for function by method hash", zap.Stringer("method_hash", Hash(methodHash)))
 
 	return a.FunctionsMap[string(methodHash)]
