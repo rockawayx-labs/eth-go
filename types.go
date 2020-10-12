@@ -45,6 +45,10 @@ func (a Address) String() string {
 	return hex.EncodeToString(a)
 }
 
+func (a Address) Pretty() string {
+	return "0x" + hex.EncodeToString(a)
+}
+
 func (a Address) Bytes() []byte {
 	return a[:]
 }
@@ -63,13 +67,11 @@ type LogEvent struct {
 	Parameters map[string]interface{}
 }
 
-
 type Log struct {
 	Address []byte   `json:"address,omitempty"`
 	Topics  [][]byte `json:"topics,omitempty"`
 	Data    []byte   `json:"data,omitempty"`
 	// supplement
-	Index                uint32   `json:"index,omitempty"`
-	BlockIndex           uint32   `json:"blockIndex,omitempty"`
-
+	Index      uint32 `json:"index,omitempty"`
+	BlockIndex uint32 `json:"blockIndex,omitempty"`
 }
