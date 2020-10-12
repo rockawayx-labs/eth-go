@@ -34,6 +34,11 @@ type PrivateKey struct {
 	inner *ecdsa.PrivateKey
 }
 
+func (p *PrivateKey) String() string {
+	d := crypto.FromECDSA(p.inner)
+	return hex.EncodeToString(d)
+}
+
 func (p *PrivateKey) MarshalJSON() ([]byte, error) {
 	d := crypto.FromECDSA(p.inner)
 	return json.Marshal(hex.EncodeToString(d))
