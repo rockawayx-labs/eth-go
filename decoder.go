@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"strconv"
 
-	"go.uber.org/zap"
 	"github.com/dfuse-io/eth-go/constants"
+	"go.uber.org/zap"
 )
 
 type Decoder struct {
@@ -268,4 +268,13 @@ type biteArray []byte
 
 func (a biteArray) At(index uint64, value interface{}) {
 	([]byte)(a)[index] = value.(byte)
+}
+
+func MustHexDecode(input string) []byte {
+	value, err := hex.DecodeString(input)
+	if err != nil {
+		panic(fmt.Errorf("should have been possible to transform decode %q as hex: %s", input, err))
+	}
+
+	return value
 }
