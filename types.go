@@ -3,6 +3,7 @@ package eth
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -41,7 +42,7 @@ func NewAddress(input string) (out Address, err error) {
 		bytes = bytes[byteCount-20:]
 	}
 
-	return Address(bytes), nil
+	return bytes, nil
 }
 
 func (a Address) String() string {
@@ -62,6 +63,24 @@ func (a Address) MarshalText() ([]byte, error) {
 
 func (a Address) ID() uint64 {
 	return binary.LittleEndian.Uint64(a)
+}
+
+func (a Address) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString([]byte(a)))
+}
+
+func (a *Address) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	var err error
+	if *a, err = hex.DecodeString(strings.TrimPrefix(s, "0x")); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type DecodedMethod struct {
