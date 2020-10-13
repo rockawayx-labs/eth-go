@@ -10,23 +10,38 @@ import (
 )
 
 func TestEncodeFullMethod(t *testing.T) {
-	method, err := NewMethodFromSignature("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)")
-	require.NoError(t, err)
-
-	inputData := []interface{}{
-		big.NewInt(100000000000000),  // 0.0001 JOHNY
-		big.NewInt(2317850009133627), // 0.002317 STEPD
-		[]Address{
-			MustNewAddress("d24af825e38495ee362466f214946cdf53aab8c8"), // JOHNY
-			MustNewAddress("c778417e063141139fce010982780140aa0cd5ab"), // WETH
-			MustNewAddress("7d97ba95dac25316b9531152b3baa32327994da8"), // STEPD
+	method := &Method{
+		Signature: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+		Inputs: []*Input{
+			{
+				Type:  "uint256",
+				Value: big.NewInt(100000000000000),
+			},
+			{
+				Type:  "uint256",
+				Value: big.NewInt(2317850009133627),
+			},
+			{
+				Type: "address[]",
+				Value: []Address{
+					MustNewAddress("d24af825e38495ee362466f214946cdf53aab8c8"), // JOHNY
+					MustNewAddress("c778417e063141139fce010982780140aa0cd5ab"), // WETH
+					MustNewAddress("7d97ba95dac25316b9531152b3baa32327994da8"), // STEPD
+				},
+			},
+			{
+				Type:  "address",
+				Value: MustNewAddress("40c7f627ffb69b8d8752c518f8790b04a523bee5"),
+			},
+			{
+				Type:  "uint256",
+				Value: big.NewInt(1600958277),
+			},
 		},
-		MustNewAddress("40c7f627ffb69b8d8752c518f8790b04a523bee5"), // Deposite Account (josh)
-		big.NewInt(1600958277), // deadline as a unixtimestamp
 	}
 
 	e := Encoder{}
-	err = e.WriteMethod(method, inputData)
+	err := e.WriteMethod(method)
 	require.NoError(t, err)
 	assert.Equal(t, []byte{
 		0x38, 0xed, 0x17, 0x39,
@@ -73,28 +88,35 @@ func TestEncodeMethod(t *testing.T) {
 	method := &Method{
 		Signature: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
 		Inputs: []*Input{
-			{Type: "uint256"},
-			{Type: "uint256"},
-			{Type: "address[]"},
-			{Type: "address"},
-			{Type: "uint256"},
+			{
+				Type:  "uint256",
+				Value: big.NewInt(100000000000000),
+			},
+			{
+				Type:  "uint256",
+				Value: big.NewInt(2317850009133627),
+			},
+			{
+				Type: "address[]",
+				Value: []Address{
+					MustNewAddress("d24af825e38495ee362466f214946cdf53aab8c8"), // JOHNY
+					MustNewAddress("c778417e063141139fce010982780140aa0cd5ab"), // WETH
+					MustNewAddress("7d97ba95dac25316b9531152b3baa32327994da8"), // STEPD
+				},
+			},
+			{
+				Type:  "address",
+				Value: MustNewAddress("40c7f627ffb69b8d8752c518f8790b04a523bee5"),
+			},
+			{
+				Type:  "uint256",
+				Value: big.NewInt(1600958277),
+			},
 		},
-	}
-
-	inputData := []interface{}{
-		big.NewInt(100000000000000),  // 0.0001 JOHNY
-		big.NewInt(2317850009133627), // 0.002317 STEPD
-		[]Address{
-			MustNewAddress("d24af825e38495ee362466f214946cdf53aab8c8"), // JOHNY
-			MustNewAddress("c778417e063141139fce010982780140aa0cd5ab"), // WETH
-			MustNewAddress("7d97ba95dac25316b9531152b3baa32327994da8"), // STEPD
-		},
-		MustNewAddress("40c7f627ffb69b8d8752c518f8790b04a523bee5"), // Deposite Account (josh)
-		big.NewInt(1600958277), // deadline as a unixtimestamp
 	}
 
 	e := Encoder{}
-	err := e.WriteMethod(method, inputData)
+	err := e.WriteMethod(method)
 	require.NoError(t, err)
 	assert.Equal(t, []byte{
 		0x38, 0xed, 0x17, 0x39,

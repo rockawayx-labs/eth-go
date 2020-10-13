@@ -35,10 +35,7 @@ func (e *Encoder) Buffer() []byte {
 	return e.buffer
 }
 
-func (e *Encoder) WriteMethod(method *Method, data []interface{}) error {
-	if len(method.Inputs) != len(data) {
-		return fmt.Errorf("unable to encode method: method's data length (%d) must equal to number of method inputs (%d)", len(data), len(method.Inputs))
-	}
+func (e *Encoder) WriteMethod(method *Method) error {
 	err := e.Write("method", method.Signature)
 	if err != nil {
 		return fmt.Errorf("unable to write method in buffer: %w", err)
@@ -58,7 +55,6 @@ func (e *Encoder) WriteMethod(method *Method, data []interface{}) error {
 			slicesToInsert = append(slicesToInsert, arrayToInsert{
 				buffOffset: uint64(len(e.buffer)),
 				input:      input,
-				data:       data[idx],
 			})
 
 			if err := e.Write("uint64", uint64(0)); err != nil {
@@ -76,7 +72,7 @@ func (e *Encoder) WriteMethod(method *Method, data []interface{}) error {
 			continue
 		}
 
-		if err := e.Write(input.Type, data[idx]); err != nil {
+		if err := e.Write(input.Type, input.Value); err != nil {
 			return fmt.Errorf("unable to write input.%d %q in buffer: %w", idx, input.Type, err)
 		}
 
@@ -110,7 +106,7 @@ func (e *Encoder) WriteMethod(method *Method, data []interface{}) error {
 			)
 		}
 
-		err = e.Write(slc.input.Type, slc.data)
+		err = e.Write(slc.input.Type, slc.input.Value)
 		if err != nil {
 			return fmt.Errorf("unable to write slice in buffer: %w", err)
 		}
@@ -279,5 +275,4 @@ func isArray(typeName string) (bool, string) {
 type arrayToInsert struct {
 	buffOffset uint64
 	input      *Input
-	data       interface{}
 }
