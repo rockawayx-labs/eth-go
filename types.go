@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 )
@@ -55,6 +56,10 @@ func (a Address) Bytes() []byte {
 
 func (a Address) MarshalText() ([]byte, error) {
 	return []byte(hex.EncodeToString(a[:])), nil
+}
+
+func (a Address) ID() uint64 {
+	return binary.LittleEndian.Uint64(a)
 }
 
 type DecodedMethod struct {
