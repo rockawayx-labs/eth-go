@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/dfuse-io/eth-go/constants"
 	"go.uber.org/zap"
@@ -271,6 +272,7 @@ func (a biteArray) At(index uint64, value interface{}) {
 }
 
 func MustHexDecode(input string) []byte {
+	input = strings.TrimPrefix(input, "0x")
 	value, err := hex.DecodeString(input)
 	if err != nil {
 		panic(fmt.Errorf("should have been possible to transform decode %q as hex: %s", input, err))
