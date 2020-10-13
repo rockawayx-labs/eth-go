@@ -39,6 +39,14 @@ func (p *PrivateKey) String() string {
 	return hex.EncodeToString(d)
 }
 
+func (p *PrivateKey) Bytes() []byte {
+	return p.inner.D.Bytes()
+}
+
+func (p *PrivateKey) ToECDSA() *ecdsa.PrivateKey {
+	return p.inner
+}
+
 func (p *PrivateKey) MarshalJSON() ([]byte, error) {
 	d := crypto.FromECDSA(p.inner)
 	return json.Marshal(hex.EncodeToString(d))

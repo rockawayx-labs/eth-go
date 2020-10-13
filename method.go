@@ -1,7 +1,10 @@
 package eth
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"regexp"
 	"strings"
 )
@@ -18,6 +21,37 @@ type Input struct {
 	Type string `json:"type"`
 	// TODO: Method is a struct to model the input data or a Ethereum CALL functions, should it also contain the potentially value on the decoding side?
 	Value interface{} `json:"value"`
+}
+
+func NewMethodFromJSON(cnt []byte) (*Method, error) {
+	var m *Method
+	err := json.Unmarshal(cnt, &m)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, input := range m.Inputs {
+		switch input.Type {
+		case "address":
+			addr, err := NewAddress(SanitizeHex(input.Value.(string)))
+			if err != nil {
+				return nil, fmt.Errorf("unable to unmarshal address: %w", err)
+			}
+			input.Value = addr
+		case "uint64", "uint112", "uint256":
+			input.Value, _ = new(big.Int).SetString(SanitizeHex(input.Value.(string)), 10)
+		case "bool":
+			input.Value = input.Value.(bool)
+		case "bytes":
+			d, err := hex.DecodeString(SanitizeHex(input.Value.(string)))
+			if err != nil {
+				return nil, fmt.Errorf("unable to unmarshal address: %w", err)
+			}
+			input.Value = d
+		}
+	}
+
+	return m, err
 }
 
 func NewMethodFromSignature(signature string) (*Method, error) {
