@@ -85,18 +85,21 @@ func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
 
 }
 
-func (c *Client) GetBalance(accountAddr eth.Address) (*big.Int, error) {
+func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
 	resp, err := c.rpcCall("eth_getBalance", []interface{}{accountAddr.Pretty(), "latest"})
 	if err != nil {
 		return nil, fmt.Errorf("doing request: %w", err)
 	}
 
-	byte, err := hex.DecodeString(strings.TrimPrefix(resp, "0x"))
-	if err != nil {
+	v, ok := new(big.Int).SetString(strings.TrimPrefix(resp, "0x"), 16)
+	if !ok {
 		return nil, fmt.Errorf("unable to parse balance %s: %w", resp, err)
 	}
 
-	return new(big.Int).SetBytes(byte), nil
+	return &eth.TokenAmount{
+		Amount: v,
+		Token:  eth.ETHToken,
+	}, nil
 }
 
 func (c *Client) GasPrice() (*big.Int, error) {

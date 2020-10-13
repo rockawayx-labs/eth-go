@@ -1,6 +1,8 @@
 package eth
 
-import "math/big"
+import (
+	"math/big"
+)
 
 var _10b = big.NewInt(10)
 var decimalsBigInt = []*big.Int{
