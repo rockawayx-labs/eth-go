@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"strings"
 )
 
 type Hex []byte
@@ -21,6 +22,7 @@ func (h Hash) String() string {
 type Address []byte
 
 func MustNewAddress(input string) Address {
+	input = strings.TrimPrefix(input, "0x")
 	out, err := NewAddress(input)
 	if err != nil {
 		panic(fmt.Errorf("unable to create address: %w", err))
