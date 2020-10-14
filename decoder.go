@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"strings"
 
 	"github.com/dfuse-io/eth-go/constants"
 	"go.uber.org/zap"
@@ -234,47 +233,31 @@ type decodedArray interface {
 func newArray(typeName string, count uint64) (decodedArray, error) {
 	switch typeName {
 	case "address":
-		return addressArray(make([]Address, count)), nil
+		return AddressArray(make([]Address, count)), nil
 	case "uint112":
-		return bigIntArray(make([]*big.Int, count)), nil
+		return BigIntArray(make([]*big.Int, count)), nil
 	case "uint256":
-		return bigIntArray(make([]*big.Int, count)), nil
+		return BigIntArray(make([]*big.Int, count)), nil
 	case "string":
-		return stringArray(make([]string, count)), nil
+		return StringArray(make([]string, count)), nil
 	}
 	return nil, fmt.Errorf("type %q is not handled right now", typeName)
 }
 
-type stringArray []string
+type StringArray []string
 
-func (a stringArray) At(index uint64, value interface{}) {
+func (a StringArray) At(index uint64, value interface{}) {
 	([]string)(a)[index] = value.(string)
 }
 
-type addressArray []Address
+type AddressArray []Address
 
-func (a addressArray) At(index uint64, value interface{}) {
+func (a AddressArray) At(index uint64, value interface{}) {
 	([]Address)(a)[index] = value.(Address)
 }
 
-type bigIntArray []*big.Int
+type BigIntArray []*big.Int
 
-func (a bigIntArray) At(index uint64, value interface{}) {
+func (a BigIntArray) At(index uint64, value interface{}) {
 	([]*big.Int)(a)[index] = value.(*big.Int)
-}
-
-type biteArray []byte
-
-func (a biteArray) At(index uint64, value interface{}) {
-	([]byte)(a)[index] = value.(byte)
-}
-
-func MustHexDecode(input string) []byte {
-	input = strings.TrimPrefix(input, "0x")
-	value, err := hex.DecodeString(input)
-	if err != nil {
-		panic(fmt.Errorf("should have been possible to transform decode %q as hex: %s", input, err))
-	}
-
-	return value
 }

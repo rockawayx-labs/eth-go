@@ -114,12 +114,8 @@ func (f *MethodCall) AppendArgFromString(v string) error {
 	return nil
 }
 
-func (f *MethodCall) AppendArg(v interface{}) error {
-	if len(f.Data) >= len(f.MethodDef.Parameters) {
-		return fmt.Errorf("args exceeds method definition parameter count %d", len(f.MethodDef.Parameters))
-	}
+func (f *MethodCall) AppendArg(v interface{}) {
 	f.Data = append(f.Data, v)
-	return nil
 }
 
 func (f *MethodCall) Encode() ([]byte, error) {

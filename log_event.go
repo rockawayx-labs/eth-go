@@ -25,6 +25,11 @@ type LogParameter struct {
 	Indexed  bool
 }
 
+type LogEvent struct {
+	Def  *LogEventDef
+	Data interface{}
+}
+
 func (p *LogParameter) GetName(index int) string {
 	name := p.Name
 	if name == "" {
