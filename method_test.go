@@ -25,8 +25,8 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				Parameters: []*MethodParameter{{TypeName: "bytes"}},
 			},
 			expectMethodCall: &MethodCall{
-				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bytes"}}},
-				data: []interface{}{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bytes"}}},
+				Data: []interface{}{
 					[]byte{0xaa, 0xbb, 0xcc},
 				},
 			},
@@ -40,8 +40,8 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				Parameters: []*MethodParameter{{TypeName: "address"}},
 			},
 			expectMethodCall: &MethodCall{
-				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "address"}}},
-				data: []interface{}{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "address"}}},
+				Data: []interface{}{
 					MustNewAddress("5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"),
 				},
 			},
@@ -55,8 +55,8 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				Parameters: []*MethodParameter{{TypeName: "uint64"}},
 			},
 			expectMethodCall: &MethodCall{
-				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint64"}}},
-				data: []interface{}{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint64"}}},
+				Data: []interface{}{
 					uint64(13),
 				},
 			},
@@ -70,8 +70,8 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				Parameters: []*MethodParameter{{TypeName: "uint112"}},
 			},
 			expectMethodCall: &MethodCall{
-				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint112"}}},
-				data: []interface{}{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint112"}}},
+				Data: []interface{}{
 					big.NewInt(123456789),
 				},
 			},
@@ -85,8 +85,8 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				Parameters: []*MethodParameter{{TypeName: "uint256"}},
 			},
 			expectMethodCall: &MethodCall{
-				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint256"}}},
-				data: []interface{}{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint256"}}},
+				Data: []interface{}{
 					big.NewInt(123456789),
 				},
 			},
@@ -100,8 +100,8 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				Parameters: []*MethodParameter{{TypeName: "bool"}},
 			},
 			expectMethodCall: &MethodCall{
-				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bool"}}},
-				data: []interface{}{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bool"}}},
+				Data: []interface{}{
 					true,
 				},
 			},

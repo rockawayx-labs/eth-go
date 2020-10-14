@@ -11,7 +11,7 @@ import (
 
 func TestEncodeFullMethod(t *testing.T) {
 	method := &MethodCall{
-		methodDef: &MethodDef{
+		MethodDef: &MethodDef{
 			Name: "swapExactTokensForTokens",
 			Parameters: []*MethodParameter{
 				{TypeName: "uint256"},
@@ -21,7 +21,7 @@ func TestEncodeFullMethod(t *testing.T) {
 				{TypeName: "uint256"},
 			},
 		},
-		data: []interface{}{
+		Data: []interface{}{
 			big.NewInt(100000000000000),
 			big.NewInt(2317850009133627),
 			[]Address{

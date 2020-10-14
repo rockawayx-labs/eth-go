@@ -59,7 +59,7 @@ func (d *Decoder) ReadWithMethodCall() (*MethodCall, error) {
 
 	methodCall := methodDef.NewCall()
 
-	for _, param := range methodCall.methodDef.Parameters {
+	for _, param := range methodCall.MethodDef.Parameters {
 		var currentOffset uint64
 
 		isAnArray, _ := isArray(param.TypeName)

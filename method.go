@@ -40,9 +40,10 @@ func NewMethodDef(signature string) (*MethodDef, error) {
 		Parameters: params,
 	}, nil
 }
+
 func (f *MethodDef) NewCall() *MethodCall {
 	return &MethodCall{
-		methodDef: f,
+		MethodDef: f,
 	}
 }
 
@@ -69,16 +70,16 @@ func (f *MethodDef) String() string {
 }
 
 type MethodCall struct {
-	methodDef *MethodDef
-	data      []interface{}
+	MethodDef *MethodDef
+	Data      []interface{}
 }
 
 func (f *MethodCall) AppendArgFromString(v string) error {
-	i := len(f.data)
-	if i >= len(f.methodDef.Parameters) {
-		return fmt.Errorf("args exceeds method definition parameter count %d", len(f.methodDef.Parameters))
+	i := len(f.Data)
+	if i >= len(f.MethodDef.Parameters) {
+		return fmt.Errorf("args exceeds method definition parameter count %d", len(f.MethodDef.Parameters))
 	}
-	param := f.methodDef.Parameters[i]
+	param := f.MethodDef.Parameters[i]
 	var out interface{}
 	switch param.TypeName {
 	case "bytes":
@@ -109,98 +110,29 @@ func (f *MethodCall) AppendArgFromString(v string) error {
 	case "bool":
 		out = v == "true"
 	}
-	f.data = append(f.data, out)
+	f.Data = append(f.Data, out)
 	return nil
 }
 
-func (f *MethodCall) AppendArg(v interface{}) {
+func (f *MethodCall) AppendArg(v interface{}) error {
+	if len(f.Data) >= len(f.MethodDef.Parameters) {
+		return fmt.Errorf("args exceeds method definition parameter count %d", len(f.MethodDef.Parameters))
+	}
+	f.Data = append(f.Data, v)
+	return nil
+}
 
+func (f *MethodCall) Encode() ([]byte, error) {
+	enc := NewEncoder()
+	err := enc.WriteMethod(f)
+	if err != nil {
+		return nil, err
+	}
+	return enc.Buffer(), nil
 }
 
 var methodRE = regexp.MustCompile(`(.*)\(`)
 var methodInputsRE = regexp.MustCompile(`\((.*?)\)`)
-
-//
-//type MethodParameters struct {
-//	Type string `json:"type"`
-//	Name string `json:"name"`
-//}
-//
-//type MethodSignature struct {
-//	Raw        string `json:"raw"`
-//	Name       string `json:"name"`
-//	Parameters []*MethodParameters
-//}
-//
-//func NewMethodSignature(signature string) (*MethodSignature, error) {
-//	methodName := extractMethodNameFromSignature(signature)
-//	if methodName == "" {
-//		return nil, fmt.Errorf("invalid signature %s", signature)
-//	}
-//
-//	params, err := extractInputsFromSignature(signature)
-//	if err != nil {
-//		return nil, fmt.Errorf("unable to retrieve inputs %q: %w", signature, err)
-//	}
-//
-//	return &MethodSignature{
-//		Raw:        signature,
-//		Name:       methodName,
-//		Parameters: params,
-//	}, nil
-//}
-//
-//func (m *MethodSignature) NewCall() *MethodCall {
-//
-//	return &MethodCall{
-//		Signature: MethodSignature{},
-//		Arguments: nil,
-//	}
-//}
-//
-//type MethodCall struct {
-//	Signature MethodSignature `json:"signature"`
-//	Arguments []interface{}   `json:"args"`
-//}
-//
-////
-////type Input struct {
-////	Type string `json:"type"`
-////	// TODO: Method is a struct to model the input data or a Ethereum CALL functions, should it also contain the potentially value on the decoding side?
-////	Value interface{} `json:"value"`
-////}
-//
-////func NewMethodFromJSON(cnt []byte) (*Method, error) {
-////	var m *Method
-////	err := json.Unmarshal(cnt, &m)
-////	if err != nil {
-////		return nil, err
-////	}
-////
-////	for _, input := range m.Inputs {
-////		switch input.Type {
-////		case "address":
-////			addr, err := NewAddress(SanitizeHex(input.Value.(string)))
-////			if err != nil {
-////				return nil, fmt.Errorf("unable to unmarshal address: %w", err)
-////			}
-////			input.Value = addr
-////		case "uint64", "uint112", "uint256":
-////			input.Value, _ = new(big.Int).SetString(SanitizeHex(input.Value.(string)), 10)
-////		case "bool":
-////			input.Value = input.Value.(bool)
-////		case "bytes":
-////			d, err := hex.DecodeString(SanitizeHex(input.Value.(string)))
-////			if err != nil {
-////				return nil, fmt.Errorf("unable to unmarshal address: %w", err)
-////			}
-////			input.Value = d
-////		}
-////	}
-////
-////	return m, err
-////}
-//
 
 func extractMethodNameFromSignature(signature string) string {
 	methodName := methodRE.FindString(signature)

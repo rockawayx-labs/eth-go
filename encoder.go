@@ -36,7 +36,7 @@ func (e *Encoder) Buffer() []byte {
 }
 
 func (e *Encoder) WriteMethod(method *MethodCall) error {
-	methodSignature := method.methodDef.Signature()
+	methodSignature := method.MethodDef.Signature()
 	err := e.Write("method", methodSignature)
 	if err != nil {
 		return fmt.Errorf("unable to write method in buffer: %w", err)
@@ -56,14 +56,14 @@ func (e *Encoder) WriteMethod(method *MethodCall) error {
 	}
 
 	slicesToInsert := []arrayToInsert{}
-	for idx, param := range method.methodDef.Parameters {
+	for idx, param := range method.MethodDef.Parameters {
 
 		isAnArray, _ := isArray(param.TypeName)
 		if isAnArray {
 			slicesToInsert = append(slicesToInsert, arrayToInsert{
 				buffOffset: uint64(len(e.buffer)),
 				typeName:   param.TypeName,
-				value:      method.data[idx],
+				value:      method.Data[idx],
 			})
 
 			if err := e.Write("uint64", uint64(0)); err != nil {
@@ -81,7 +81,7 @@ func (e *Encoder) WriteMethod(method *MethodCall) error {
 			continue
 		}
 
-		if err := e.Write(param.TypeName, method.data[idx]); err != nil {
+		if err := e.Write(param.TypeName, method.Data[idx]); err != nil {
 			return fmt.Errorf("unable to write input.%d %q in buffer: %w", idx, param.TypeName, err)
 		}
 

@@ -34,7 +34,6 @@ func (s *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimi
 		zap.Stringer("gas_price", gasPrice),
 		zap.Stringer("trx_data", eth.Hex(trxData)),
 	)
-	fmt.Println("signing with signer", s.signer, "and private key", fmt.Sprintf("%x", s.privateKey.Bytes()))
 
 	tx := types.NewTransaction(nonce, common.BytesToAddress(to), value, gasLimit, gasPrice, trxData)
 	signedTx, err := types.SignTx(tx, s.signer, s.privateKey.ToECDSA())
