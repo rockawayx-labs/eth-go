@@ -115,8 +115,7 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 
 			methodCall := methodDef.NewCall()
 			for _, input := range test.inputs {
-				err := methodCall.AppendArgFromString(input)
-				require.NoError(t, err)
+				methodCall.AppendArgFromString(input)
 			}
 
 			assert.Equal(t, test.expectMethodCall, methodCall)
@@ -133,9 +132,63 @@ func TestMethodCall_AppendArgFromStringTooManyArgs(t *testing.T) {
 	}, methodDef)
 
 	methodCall := methodDef.NewCall()
-	err = methodCall.AppendArgFromString("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
-	require.NoError(t, err)
-
-	err = methodCall.AppendArgFromString("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	methodCall.AppendArgFromString("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	methodCall.AppendArgFromString("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	_, err = methodCall.Encode()
 	assert.Error(t, err)
+}
+
+func TestNewMethodDef(t *testing.T) {
+	var tests = []struct {
+		name            string
+		signature       string
+		expectMethodDef *MethodDef
+		expectError     bool
+	}{
+		{
+			name:        "not a method",
+			signature:   "not a method",
+			expectError: true,
+		},
+		{
+			name:      "method no arg",
+			signature: "method()",
+			expectMethodDef: &MethodDef{
+				Name: "method",
+			},
+		},
+		{
+			name:      "method one arg",
+			signature: "method(address)",
+			expectMethodDef: &MethodDef{
+				Name: "method",
+				Parameters: []*MethodParameter{
+					{TypeName: "address"},
+				},
+			},
+		},
+		{
+			name:      "method mutli arg",
+			signature: "method(address,uint256)",
+			expectMethodDef: &MethodDef{
+				Name: "method",
+				Parameters: []*MethodParameter{
+					{TypeName: "address"},
+					{TypeName: "uint256"},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			methodDef, err := NewMethodDef(test.signature)
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectMethodDef, methodDef)
+			}
+		})
+	}
+
 }

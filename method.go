@@ -72,12 +72,15 @@ func (f *MethodDef) String() string {
 type MethodCall struct {
 	MethodDef *MethodDef
 	Data      []interface{}
+
+	err []error
 }
 
-func (f *MethodCall) AppendArgFromString(v string) error {
+func (f *MethodCall) AppendArgFromString(v string) {
 	i := len(f.Data)
 	if i >= len(f.MethodDef.Parameters) {
-		return fmt.Errorf("args exceeds method definition parameter count %d", len(f.MethodDef.Parameters))
+		f.err = append(f.err, fmt.Errorf("args exceeds method definition parameter count %d", len(f.MethodDef.Parameters)))
+		return
 	}
 	param := f.MethodDef.Parameters[i]
 	var out interface{}
@@ -85,33 +88,36 @@ func (f *MethodCall) AppendArgFromString(v string) error {
 	case "bytes":
 		data, err := hex.DecodeString(SanitizeHex(v))
 		if err != nil {
-			return err
+			f.err = append(f.err, fmt.Errorf("unable to convert %q to bytes: %w", v, err))
+			return
 		}
 		out = data
 	case "address":
 		var addr Address
 		err := json.Unmarshal([]byte(fmt.Sprintf("%q", v)), &addr)
 		if err != nil {
-			return err
+			f.err = append(f.err, fmt.Errorf("unable to convert %q to address: %w", v, err))
+			return
 		}
 		out = addr
 	case "uint64":
 		v, err := strconv.ParseUint(v, 10, 64)
 		if err != nil {
-			return err
+			f.err = append(f.err, fmt.Errorf("unable to convert %q to uint64: %w", v, err))
+			return
 		}
 		out = v
 	case "uint112", "uint256":
 		var ok bool
 		out, ok = new(big.Int).SetString(v, 10)
 		if !ok {
-			fmt.Errorf("unable to convert %q to %s ", v, param.TypeName)
+			f.err = append(f.err, fmt.Errorf("unable to convert %q to %s ", v, param.TypeName))
+			return
 		}
 	case "bool":
 		out = v == "true"
 	}
 	f.Data = append(f.Data, out)
-	return nil
 }
 
 func (f *MethodCall) AppendArg(v interface{}) {
@@ -119,6 +125,10 @@ func (f *MethodCall) AppendArg(v interface{}) {
 }
 
 func (f *MethodCall) Encode() ([]byte, error) {
+	if len(f.err) > 0 {
+		return nil, fmt.Errorf("%s", f.err)
+
+	}
 	enc := NewEncoder()
 	err := enc.WriteMethod(f)
 	if err != nil {
@@ -155,8 +165,7 @@ func extractTypesFromSignature(method string) ([]string, error) {
 	s = strings.TrimRight(s, ")")
 	s = strings.Replace(s, " ", "", -1)
 	if s == "" {
-		return nil, fmt.Errorf("invalid method %s", method)
+		return []string{}, nil
 	}
-
 	return strings.Split(s, ","), nil
 }
