@@ -8,74 +8,134 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewAddress(t *testing.T) {
-	method, err := NewMethodFromSignature("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)")
-	require.NoError(t, err)
-	assert.Equal(t, &Method{
-		Signature: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
-		Inputs: []*Input{
-			{Type: "uint256"},
-			{Type: "uint256"},
-			{Type: "address[]"},
-			{Type: "address"},
-			{Type: "uint256"},
-		},
-	},
-		method)
-}
-
-func TestMethod_UnmarshalJSON(t *testing.T) {
+func TestMethodCall_AppendArgFromString(t *testing.T) {
 	tests := []struct {
-		name   string
-		cnt    string
-		method *Method
+		name             string
+		signature        string
+		inputs           []string
+		expectMethodDef  *MethodDef
+		expectMethodCall *MethodCall
 	}{
 		{
-			name: "method with address",
-			cnt:  `{"signature": "method(address)", "inputs": [{"type": "address", "value": "0xf8ac81dd843b9aca008302f8ac81dd843b9aca00"}]}`,
-			method: &Method{
-				Signature: "method(address)",
-				Inputs: []*Input{
-					{Type: "address", Value: MustNewAddress("f8ac81dd843b9aca008302f8ac81dd843b9aca00")},
+			name:      "testing bytes",
+			signature: "method(bytes)",
+			inputs:    []string{"0xaabbcc"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "bytes"}},
+			},
+			expectMethodCall: &MethodCall{
+				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bytes"}}},
+				data: []interface{}{
+					[]byte{0xaa, 0xbb, 0xcc},
 				},
 			},
 		},
 		{
-			name: "method with uint112",
-			cnt:  `{"signature": "method(uint112)", "inputs": [{"type": "uint112", "value": "10"}]}`,
-			method: &Method{
-				Signature: "method(uint112)",
-				Inputs: []*Input{
-					{Type: "uint112", Value: big.NewInt(10)},
+			name:      "testing address",
+			signature: "method(address)",
+			inputs:    []string{"0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "address"}},
+			},
+			expectMethodCall: &MethodCall{
+				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "address"}}},
+				data: []interface{}{
+					MustNewAddress("5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"),
 				},
 			},
 		},
 		{
-			name: "method with uint256",
-			cnt:  `{"signature": "method(uint256)", "inputs": [{"type": "uint256", "value": "23"}]}`,
-			method: &Method{
-				Signature: "method(uint256)",
-				Inputs: []*Input{
-					{Type: "uint256", Value: big.NewInt(23)},
+			name:      "testing uint64",
+			signature: "method(uint64)",
+			inputs:    []string{"13"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "uint64"}},
+			},
+			expectMethodCall: &MethodCall{
+				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint64"}}},
+				data: []interface{}{
+					uint64(13),
 				},
 			},
 		},
 		{
-			name: "method with string",
-			cnt:  `{"signature": "method(string)", "inputs": [{"type": "string", "value": "hello world"}]}`,
-			method: &Method{
-				Signature: "method(string)",
-				Inputs: []*Input{
-					{Type: "string", Value: "hello world"},
+			name:      "testing uint112",
+			signature: "method(uint112)",
+			inputs:    []string{"123456789"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "uint112"}},
+			},
+			expectMethodCall: &MethodCall{
+				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint112"}}},
+				data: []interface{}{
+					big.NewInt(123456789),
+				},
+			},
+		},
+		{
+			name:      "testing uint256",
+			signature: "method(uint256)",
+			inputs:    []string{"123456789"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "uint256"}},
+			},
+			expectMethodCall: &MethodCall{
+				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint256"}}},
+				data: []interface{}{
+					big.NewInt(123456789),
+				},
+			},
+		},
+		{
+			name:      "testing bool",
+			signature: "method(bool)",
+			inputs:    []string{"true"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "bool"}},
+			},
+			expectMethodCall: &MethodCall{
+				methodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bool"}}},
+				data: []interface{}{
+					true,
 				},
 			},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			m, err := NewMethodFromJSON([]byte(test.cnt))
+			methodDef, err := NewMethodDef(test.signature)
 			require.NoError(t, err)
-			assert.Equal(t, test.method, m)
+			assert.Equal(t, test.expectMethodDef, methodDef)
+
+			methodCall := methodDef.NewCall()
+			for _, input := range test.inputs {
+				err := methodCall.AppendArgFromString(input)
+				require.NoError(t, err)
+			}
+
+			assert.Equal(t, test.expectMethodCall, methodCall)
 		})
 	}
+}
+
+func TestMethodCall_AppendArgFromStringTooManyArgs(t *testing.T) {
+	methodDef, err := NewMethodDef("method(address)")
+	require.NoError(t, err)
+	assert.Equal(t, &MethodDef{
+		Name:       "method",
+		Parameters: []*MethodParameter{{TypeName: "address"}},
+	}, methodDef)
+
+	methodCall := methodDef.NewCall()
+	err = methodCall.AppendArgFromString("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	require.NoError(t, err)
+
+	err = methodCall.AppendArgFromString("0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c")
+	assert.Error(t, err)
 }

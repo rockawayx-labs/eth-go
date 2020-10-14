@@ -35,8 +35,9 @@ func (e *Encoder) Buffer() []byte {
 	return e.buffer
 }
 
-func (e *Encoder) WriteMethod(method *Method) error {
-	err := e.Write("method", method.Signature)
+func (e *Encoder) WriteMethod(method *MethodCall) error {
+	methodSignature := method.methodDef.Signature()
+	err := e.Write("method", methodSignature)
 	if err != nil {
 		return fmt.Errorf("unable to write method in buffer: %w", err)
 	}
@@ -44,17 +45,25 @@ func (e *Encoder) WriteMethod(method *Method) error {
 	if traceEnabled {
 		zlog.Debug("written method name in buffer",
 			zap.Stringer("buf", buffer(e.buffer)),
-			zap.String("method_name", method.Signature),
+			zap.String("method_name", methodSignature),
 		)
 	}
 
+	type arrayToInsert struct {
+		buffOffset uint64
+		typeName   string
+		value      interface{}
+	}
+
 	slicesToInsert := []arrayToInsert{}
-	for idx, input := range method.Inputs {
-		isAnArray, _ := isArray(input.Type)
+	for idx, param := range method.methodDef.Parameters {
+
+		isAnArray, _ := isArray(param.TypeName)
 		if isAnArray {
 			slicesToInsert = append(slicesToInsert, arrayToInsert{
 				buffOffset: uint64(len(e.buffer)),
-				input:      input,
+				typeName:   param.TypeName,
+				value:      method.data[idx],
 			})
 
 			if err := e.Write("uint64", uint64(0)); err != nil {
@@ -64,7 +73,7 @@ func (e *Encoder) WriteMethod(method *Method) error {
 			if traceEnabled {
 				zlog.Debug("written slice placeholder in buffer",
 					zap.Stringer("buf", buffer(e.buffer)),
-					zap.String("input_type", input.Type),
+					zap.String("input_type", param.TypeName),
 					zap.Int("input_idx", idx),
 				)
 			}
@@ -72,14 +81,14 @@ func (e *Encoder) WriteMethod(method *Method) error {
 			continue
 		}
 
-		if err := e.Write(input.Type, input.Value); err != nil {
-			return fmt.Errorf("unable to write input.%d %q in buffer: %w", idx, input.Type, err)
+		if err := e.Write(param.TypeName, method.data[idx]); err != nil {
+			return fmt.Errorf("unable to write input.%d %q in buffer: %w", idx, param.TypeName, err)
 		}
 
 		if traceEnabled {
 			zlog.Debug("written input data in buffer",
 				zap.Stringer("buf", buffer(e.buffer)),
-				zap.String("input_type", input.Type),
+				zap.String("input_type", param.TypeName),
 				zap.Int("input_idx", idx),
 			)
 		}
@@ -101,12 +110,12 @@ func (e *Encoder) WriteMethod(method *Method) error {
 		if traceEnabled {
 			zlog.Debug("inserted slice offset in buffer",
 				zap.Stringer("buf", buffer(e.buffer)),
-				zap.String("input_type", slc.input.Type),
+				zap.String("input_type", slc.typeName),
 				zap.Int("slice_idx", sidx),
 			)
 		}
 
-		err = e.Write(slc.input.Type, slc.input.Value)
+		err = e.Write(slc.typeName, slc.value)
 		if err != nil {
 			return fmt.Errorf("unable to write slice in buffer: %w", err)
 		}
@@ -114,7 +123,7 @@ func (e *Encoder) WriteMethod(method *Method) error {
 		if traceEnabled {
 			zlog.Debug("inserted slice in buffer",
 				zap.Stringer("buf", buffer(e.buffer)),
-				zap.String("input_type", slc.input.Type),
+				zap.String("input_type", slc.typeName),
 				zap.Int("slice_idx", sidx),
 			)
 		}
@@ -269,10 +278,4 @@ func isArray(typeName string) (bool, string) {
 		return true, "bytes"
 	}
 	return false, typeName
-}
-
-// helper struct... kinda ugly
-type arrayToInsert struct {
-	buffOffset uint64
-	input      *Input
 }

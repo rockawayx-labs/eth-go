@@ -82,22 +82,3 @@ func (a *Address) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
-
-type DecodedMethod struct {
-	Signature  string
-	Parameters map[string]interface{}
-}
-
-type LogEvent struct {
-	Signature  string
-	Parameters map[string]interface{}
-}
-
-type Log struct {
-	Address []byte   `json:"address,omitempty"`
-	Topics  [][]byte `json:"topics,omitempty"`
-	Data    []byte   `json:"data,omitempty"`
-	// supplement
-	Index      uint32 `json:"index,omitempty"`
-	BlockIndex uint32 `json:"blockIndex,omitempty"`
-}

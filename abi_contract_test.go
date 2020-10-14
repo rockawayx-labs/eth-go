@@ -18,7 +18,7 @@ func TestABIContract_Parse(t *testing.T) {
 			"log event indexed",
 			`[{"name":"PairCreated","type":"event","inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"}]}]`,
 			&ABI{
-				FunctionsMap: map[string]*FunctionDef{},
+				MethodsMap: map[string]*MethodDef{},
 				LogEventsMap: map[string]*LogEventDef{
 					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {
 						Name: "PairCreated",
@@ -76,12 +76,12 @@ func abiEquals(t *testing.T, expected *ABI, actual *ABI) {
 		}
 	}
 
-	if len(expected.FunctionsMap) != len(actual.FunctionsMap) {
-		require.Equal(t, expected.FunctionsMap, actual.FunctionsMap)
+	if len(expected.MethodsMap) != len(actual.MethodsMap) {
+		require.Equal(t, expected.MethodsMap, actual.MethodsMap)
 	} else {
-		for key, value := range expected.FunctionsMap {
-			assert.Contains(t, actual.FunctionsMap, key, "method id %x", []byte(key))
-			assert.Equal(t, value, actual.FunctionsMap[key])
+		for key, value := range expected.MethodsMap {
+			assert.Contains(t, actual.MethodsMap, key, "method id %x", []byte(key))
+			assert.Equal(t, value, actual.MethodsMap[key])
 		}
 	}
 }

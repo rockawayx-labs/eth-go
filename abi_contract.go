@@ -21,7 +21,7 @@ func parseABIFromBytes(input []byte) (*ABI, error) {
 
 	abi := &ABI{
 		LogEventsMap: map[string]*LogEventDef{},
-		FunctionsMap: map[string]*FunctionDef{},
+		MethodsMap:   map[string]*MethodDef{},
 	}
 
 	for _, decl := range declarations {
@@ -49,23 +49,23 @@ type declaration struct {
 	Constant        bool        `json:"constant,omitempty"`
 }
 
-func (d *declaration) toFunctionDef() *FunctionDef {
-	out := &FunctionDef{}
+func (d *declaration) toFunctionDef() *MethodDef {
+	out := &MethodDef{}
 	out.Name = d.Name
 	out.Payable = d.Payable
 	out.ViewOnly = d.StateMutability == "view"
 
-	out.Parameters = make([]*FunctionParameter, len(d.Inputs))
+	out.Parameters = make([]*MethodParameter, len(d.Inputs))
 	for i, input := range d.Inputs {
-		out.Parameters[i] = &FunctionParameter{
+		out.Parameters[i] = &MethodParameter{
 			Name:     input.Name,
 			TypeName: input.Type,
 		}
 	}
 
-	out.ReturnParameters = make([]*FunctionParameter, len(d.Outputs))
+	out.ReturnParameters = make([]*MethodParameter, len(d.Outputs))
 	for i, input := range d.Outputs {
-		out.Parameters[i] = &FunctionParameter{
+		out.Parameters[i] = &MethodParameter{
 			Name:     input.Name,
 			TypeName: input.Type,
 		}

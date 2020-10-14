@@ -15,7 +15,7 @@ func ParseAST(astFilepath string) *ABI {
 	_ = json.Unmarshal([]byte(file), &ast)
 
 	abi := &ABI{
-		FunctionsMap: make(map[string]*FunctionDef),
+		MethodsMap: make(map[string]*MethodDef),
 	}
 
 	for _, node := range ast["nodes"].([]interface{}) {
@@ -37,7 +37,7 @@ func convertJsonToASTNode(abi *ABI, node map[string]interface{}) *ABI {
 		if err != nil {
 			//zlog.Warn("error creating function", zap.Error(err))
 		} else {
-			abi.FunctionsMap[string(f.methodID())] = f
+			abi.MethodsMap[string(f.methodID())] = f
 
 		}
 	default:
@@ -46,7 +46,7 @@ func convertJsonToASTNode(abi *ABI, node map[string]interface{}) *ABI {
 	return abi
 }
 
-func createFunctionDefinition(node map[string]interface{}) (*FunctionDef, error) {
+func createFunctionDefinition(node map[string]interface{}) (*MethodDef, error) {
 	if _, ok := node["kind"].(string); !ok {
 		zlog.Fatal("expected 'kind' to be a string!")
 	}
@@ -80,15 +80,15 @@ func createContractDefinition(abi *ABI, node map[string]interface{}) *ABI {
 	return abi
 }
 
-func createFunctionDefinitionFunc(node map[string]interface{}) (*FunctionDef, error) {
+func createFunctionDefinitionFunc(node map[string]interface{}) (*MethodDef, error) {
 	if _, ok := node["name"].(string); !ok {
 		return nil, fmt.Errorf("expected 'name' to be a string")
 	}
 
-	f := &FunctionDef{
+	f := &MethodDef{
 		Name:             node["name"].(string),
-		Parameters:       []*FunctionParameter{},
-		ReturnParameters: []*FunctionParameter{},
+		Parameters:       []*MethodParameter{},
+		ReturnParameters: []*MethodParameter{},
 	}
 
 	if parameterList, ok := node["parameters"].(map[string]interface{}); ok {
@@ -119,10 +119,10 @@ func createFunctionDefinitionFunc(node map[string]interface{}) (*FunctionDef, er
 	return f, nil
 }
 
-func getFunctionParameters(parameters []interface{}) (out []*FunctionParameter) {
+func getFunctionParameters(parameters []interface{}) (out []*MethodParameter) {
 	for _, parameter := range parameters {
 		if param, ok := parameter.(map[string]interface{}); ok {
-			p := &FunctionParameter{Name: param["name"].(string)}
+			p := &MethodParameter{Name: param["name"].(string)}
 			if varType, ok := param["typeName"].(map[string]interface{}); ok {
 				p.TypeName = varType["name"].(string)
 				if str, ok := varType["stateMutability"].(string); ok {

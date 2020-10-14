@@ -46,21 +46,23 @@ func (d *Decoder) SetBytes(input []byte) *Decoder {
 	return d
 }
 
-func (d *Decoder) ReadWithMethod() (*Method, error) {
+func (d *Decoder) ReadWithMethodCall() (*MethodCall, error) {
 	methodSignature, err := d.ReadMethod()
 	if err != nil {
 		return nil, err
 	}
 
-	types, err := extractTypesFromSignature(methodSignature)
+	methodDef, err := NewMethodDef(methodSignature)
 	if err != nil {
 		return nil, err
 	}
-	method := &Method{Signature: methodSignature}
-	for _, t := range types {
+
+	methodCall := methodDef.NewCall()
+
+	for _, param := range methodCall.methodDef.Parameters {
 		var currentOffset uint64
 
-		isAnArray, _ := isArray(t)
+		isAnArray, _ := isArray(param.TypeName)
 		if isAnArray {
 			currentOffset = d.offset
 			jumpToOffset, err := d.read("uint256")
@@ -71,7 +73,7 @@ func (d *Decoder) ReadWithMethod() (*Method, error) {
 			d.offset = (jumpToOffset.(*big.Int).Uint64() + 4)
 		}
 
-		out, err := d.Read(t)
+		out, err := d.Read(param.TypeName)
 		if err != nil {
 			return nil, fmt.Errorf("unable to decode method input: %w", err)
 		}
@@ -80,13 +82,9 @@ func (d *Decoder) ReadWithMethod() (*Method, error) {
 			d.offset = (currentOffset + 32)
 		}
 
-		method.Inputs = append(method.Inputs, &Input{
-			Type:  t,
-			Value: out,
-		})
-
+		methodCall.AppendArg(out)
 	}
-	return method, nil
+	return methodCall, nil
 }
 
 func (d *Decoder) Read(typeName string) (interface{}, error) {
