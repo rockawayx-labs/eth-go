@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/dfuse-io/eth-go"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"go.uber.org/zap"

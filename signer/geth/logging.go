@@ -8,5 +8,5 @@ import (
 var zlog = zap.NewNop()
 
 func setupLogger() {
-	logging.Register("github.com/dfuse-io/ethc/signer/geth", &zlog)
+	logging.Register("github.com/dfuse-io/eth-go/signer/geth", &zlog)
 }
