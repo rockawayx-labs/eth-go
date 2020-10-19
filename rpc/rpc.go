@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -15,6 +16,8 @@ import (
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )
+
+var ErrFalseResp = errors.New("false response")
 
 // TODO: refactor to use mux rpc
 type Client struct {
@@ -63,7 +66,7 @@ func (c *Client) ChainID() (*big.Int, error) {
 
 	resp, err := c.rpcCall("eth_chainId", []interface{}{})
 	if err != nil {
-		return nil, fmt.Errorf("doing request: %w", err)
+		return nil, fmt.Errorf("unale to perform eth_chainId request: %w", err)
 	}
 
 	i := &big.Int{}
@@ -75,10 +78,54 @@ func (c *Client) ChainID() (*big.Int, error) {
 	return c.chainID, nil
 }
 
+func (c *Client) ProtocolVersion() (string, error) {
+	resp, err := c.rpcCall("eth_protocolVersion", []interface{}{})
+	if err != nil {
+		return "", fmt.Errorf("unale to perform eth_protocolVersion request: %w", err)
+	}
+
+	return resp, nil
+}
+
+type SyncingResp struct {
+	StartingBlockNum uint64 `json:"starting_block_num"`
+	CurrentBlockNum  uint64 `json:"current_block_num"`
+	HighestBlockNum  uint64 `json:"highest_block_num"`
+}
+
+func (c *Client) Syncing() (*SyncingResp, error) {
+	resp, err := c.rpcCall("eth_syncing", []interface{}{})
+	if err != nil {
+		return nil, fmt.Errorf("unale to perform eth_syncing request: %w", err)
+	}
+
+	if resp == "false" {
+		return nil, ErrFalseResp
+	}
+	out := &SyncingResp{}
+
+	out.StartingBlockNum, err = strconv.ParseUint(strings.TrimPrefix(gjson.GetBytes([]byte(resp), "startingBlock").String(), "0x"), 16, 64)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse starting block num %s: %w", resp, err)
+	}
+
+	out.CurrentBlockNum, err = strconv.ParseUint(strings.TrimPrefix(gjson.GetBytes([]byte(resp), "currentBlock").String(), "0x"), 16, 64)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse current block num %s: %w", resp, err)
+	}
+
+	out.HighestBlockNum, err = strconv.ParseUint(strings.TrimPrefix(gjson.GetBytes([]byte(resp), "highestBlock").String(), "0x"), 16, 64)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse current block num %s: %w", resp, err)
+	}
+
+	return out, nil
+}
+
 func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
 	resp, err := c.rpcCall("eth_getTransactionCount", []interface{}{accountAddr.Pretty(), "latest"})
 	if err != nil {
-		return 0, fmt.Errorf("doing request: %w", err)
+		return 0, fmt.Errorf("unale to perform eth_getTransactionCount request: %w", err)
 	}
 
 	nonce, err := strconv.ParseUint(strings.TrimPrefix(resp, "0x"), 16, 64)
@@ -92,7 +139,7 @@ func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
 func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
 	resp, err := c.rpcCall("eth_getBalance", []interface{}{accountAddr.Pretty(), "latest"})
 	if err != nil {
-		return nil, fmt.Errorf("doing request: %w", err)
+		return nil, fmt.Errorf("unale to perform eth_getBalance request: %w", err)
 	}
 
 	v, ok := new(big.Int).SetString(strings.TrimPrefix(resp, "0x"), 16)
@@ -109,7 +156,7 @@ func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
 func (c *Client) GasPrice() (*big.Int, error) {
 	resp, err := c.rpcCall("eth_gasPrice", []interface{}{})
 	if err != nil {
-		return nil, fmt.Errorf("doing request: %w", err)
+		return nil, fmt.Errorf("unale to perform eth_gasPrice request: %w", err)
 	}
 
 	i := &big.Int{}
