@@ -1,10 +1,10 @@
 package eth
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/dfuse-io/eth-go/constants"
 	"go.uber.org/zap"
@@ -45,8 +45,8 @@ func (d *Decoder) SetBytes(input []byte) *Decoder {
 	return d
 }
 
-func (d *Decoder) ReadWithMethodCall() (*MethodCall, error) {
-	methodSignature, err := d.ReadMethod()
+func (d *Decoder) ReadMethodCall() (*MethodCall, error) {
+	methodSignature, err := d.readMethod()
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (d *Decoder) ReadWithMethodCall() (*MethodCall, error) {
 	for _, param := range methodCall.MethodDef.Parameters {
 		var currentOffset uint64
 
-		isAnArray, _ := isArray(param.TypeName)
-		if isAnArray {
+		isOffset := isOffsetType(param.TypeName)
+		if isOffset {
 			currentOffset = d.offset
 			jumpToOffset, err := d.read("uint256")
 			if err != nil {
@@ -77,7 +77,7 @@ func (d *Decoder) ReadWithMethodCall() (*MethodCall, error) {
 			return nil, fmt.Errorf("unable to decode method input: %w", err)
 		}
 
-		if isAnArray {
+		if isOffset {
 			d.offset = (currentOffset + 32)
 		}
 
@@ -99,10 +99,6 @@ func (d *Decoder) Read(typeName string) (interface{}, error) {
 	}
 
 	size := length.(*big.Int).Uint64()
-	// little optimization for byte array
-	if resolvedTypeName == "bytes" {
-		return d.readBytes(size)
-	}
 
 	arr, err := newArray(resolvedTypeName, size)
 	if err != nil {
@@ -121,23 +117,73 @@ func (d *Decoder) Read(typeName string) (interface{}, error) {
 
 func (d *Decoder) read(typeName string) (out interface{}, err error) {
 	switch typeName {
-	case "address":
-		return d.ReadAddress()
-	case "uint112":
-		return d.ReadUint112()
-	case "uint256":
-		return d.ReadUint256()
-	case "string":
-		return d.ReadString()
+	case "bool":
+		return d.readBool()
+	case "uint8":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return uint8(v), nil
+	case "uint16":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return uint16(v), nil
+	case "uint24":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return uint32(v), nil
+	case "uint32":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return uint32(v), nil
+	case "uint40":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "uint48":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "uint56":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "uint64":
+		v, err := d.readUint64()
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "uint72", "uint80", "uint88", "uint96", "uint104", "uint112", "uint120", "uint128", "uint136", "uint144", "uint152", "uint160", "uint168", "uint176", "uint184", "uint192", "uint200", "uint208", "uint216", "uint224", "uint232", "uint240", "uint248", "uint256":
+		return d.readBigInt()
 	case "method":
-		return d.ReadMethod()
+		return d.readMethod()
+	case "address":
+		return d.readAddress()
+	case "string":
+		return d.readString()
+	case "bytes":
+		return d.readBytes()
 	}
 
 	return nil, fmt.Errorf("type %q is not handled right now", typeName)
 }
 
-func (d *Decoder) ReadMethod() (out string, err error) {
-	data, err := d.readBytes(4)
+func (d *Decoder) readMethod() (out string, err error) {
+	data, err := d.readBuffer(4)
 	if err != nil {
 		return out, err
 	}
@@ -149,20 +195,22 @@ func (d *Decoder) ReadMethod() (out string, err error) {
 	return out, nil
 }
 
-func (d *Decoder) ReadString() (out string, err error) {
-	prevLocation := d.offset
-	offset, err := d.ReadUint256()
+func (d *Decoder) readBool() (out bool, err error) {
+	data, err := d.readBuffer(32)
 	if err != nil {
 		return out, err
 	}
-	d.offset = prevLocation + offset.Uint64()
-	size, err := d.ReadUint256()
+	return (data[31] == byte(0x01)), nil
+}
+
+func (d *Decoder) readString() (out string, err error) {
+	size, err := d.readBigInt()
 	if err != nil {
 		return out, err
 	}
 
 	remaining := 32 - (size.Uint64() % 32)
-	data, err := d.readBytes(size.Uint64())
+	data, err := d.readBuffer(size.Uint64())
 	if err != nil {
 		return out, err
 	}
@@ -172,8 +220,22 @@ func (d *Decoder) ReadString() (out string, err error) {
 	return
 }
 
-func (d *Decoder) ReadAddress() (out Address, err error) {
-	data, err := d.readBytes(32)
+func (d *Decoder) readBytes() ([]byte, error) {
+	size, err := d.readBigInt()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := d.readBuffer(size.Uint64())
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (d *Decoder) readAddress() (out Address, err error) {
+	data, err := d.readBuffer(32)
 	if err != nil {
 		return out, err
 	}
@@ -186,28 +248,24 @@ func (d *Decoder) ReadAddress() (out Address, err error) {
 	return address, nil
 }
 
-func (d *Decoder) ReadUint112() (out *big.Int, err error) {
-	return d.readBigInt(112)
+func (d *Decoder) readUint64() (out uint64, err error) {
+	data, err := d.readBuffer(32)
+	if err != nil {
+		return out, err
+	}
+	return binary.BigEndian.Uint64(data[24:]), nil
 }
 
-func (d *Decoder) ReadUint256() (out *big.Int, err error) {
-	return d.readBigInt(256)
-}
-
-func (d *Decoder) readBigInt(bits int) (out *big.Int, err error) {
-	data, err := d.readBytes(32)
+func (d *Decoder) readBigInt() (out *big.Int, err error) {
+	data, err := d.readBuffer(32)
 	if err != nil {
 		return out, err
 	}
 
-	out = new(big.Int).SetBytes(data[:])
-	if traceEnabled {
-		zlog.Debug("read uint"+strconv.FormatInt(int64(bits), 10), zap.String("value", out.Text(16)))
-	}
-
-	return
+	return new(big.Int).SetBytes(data[:]), nil
 }
-func (d *Decoder) readBytes(byteCount uint64) ([]byte, error) {
+
+func (d *Decoder) readBuffer(byteCount uint64) ([]byte, error) {
 	if traceEnabled {
 		zlog.Debug("trying to read bytes", zap.Uint64("byte_count", byteCount), zap.Uint64("remaining", d.total-d.offset))
 	}
@@ -232,16 +290,30 @@ type decodedArray interface {
 
 func newArray(typeName string, count uint64) (decodedArray, error) {
 	switch typeName {
+	case "bool":
+		return BoolArray(make([]bool, count)), nil
+	case "uint8":
+		return Uint8Array(make([]uint8, count)), nil
+	case "uint16":
+		return Uint16Array(make([]uint16, count)), nil
+	case "uint24", "uint32":
+		return Uint32Array(make([]uint32, count)), nil
+	case "uint40", "uint48", "uint56", "uint64":
+		return Uint64Array(make([]uint64, count)), nil
+	case "uint72", "uint80", "uint88", "uint96", "uint104", "uint112", "uint120", "uint128", "uint136", "uint144", "uint152", "uint160", "uint168", "uint176", "uint184", "uint192", "uint200", "uint208", "uint216", "uint224", "uint232", "uint240", "uint248", "uint256":
+		return BigIntArray(make([]*big.Int, count)), nil
 	case "address":
 		return AddressArray(make([]Address, count)), nil
-	case "uint112":
-		return BigIntArray(make([]*big.Int, count)), nil
-	case "uint256":
-		return BigIntArray(make([]*big.Int, count)), nil
 	case "string":
 		return StringArray(make([]string, count)), nil
 	}
 	return nil, fmt.Errorf("type %q is not handled right now", typeName)
+}
+
+type BoolArray []bool
+
+func (a BoolArray) At(index uint64, value interface{}) {
+	([]bool)(a)[index] = value.(bool)
 }
 
 type StringArray []string
@@ -260,4 +332,28 @@ type BigIntArray []*big.Int
 
 func (a BigIntArray) At(index uint64, value interface{}) {
 	([]*big.Int)(a)[index] = value.(*big.Int)
+}
+
+type Uint8Array []uint8
+
+func (a Uint8Array) At(index uint64, value interface{}) {
+	([]uint8)(a)[index] = value.(uint8)
+}
+
+type Uint16Array []uint16
+
+func (a Uint16Array) At(index uint64, value interface{}) {
+	([]uint16)(a)[index] = value.(uint16)
+}
+
+type Uint32Array []uint32
+
+func (a Uint32Array) At(index uint64, value interface{}) {
+	([]uint32)(a)[index] = value.(uint32)
+}
+
+type Uint64Array []uint64
+
+func (a Uint64Array) At(index uint64, value interface{}) {
+	([]uint64)(a)[index] = value.(uint64)
 }

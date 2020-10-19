@@ -45,7 +45,11 @@ value:	(optional) Integer of the value sent with this transaction
 data:	(optional) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI in the Solidity documentation
 */
 func (c *Client) Call(trxObject map[string]string) (string, error) {
-	return c.rpcCall("eth_call", []interface{}{trxObject, "latest"})
+	return c.CallAtBlock(trxObject, "latest")
+}
+
+func (c *Client) CallAtBlock(trxObject map[string]string, blockAt string) (string, error) {
+	return c.rpcCall("eth_call", []interface{}{trxObject, blockAt})
 }
 
 func (c *Client) SendRaw(rawData []byte) (string, error) {

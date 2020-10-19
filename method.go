@@ -130,7 +130,7 @@ func (f *MethodCall) Encode() ([]byte, error) {
 
 	}
 	enc := NewEncoder()
-	err := enc.WriteMethod(f)
+	err := enc.WriteMethodCall(f)
 	if err != nil {
 		return nil, err
 	}

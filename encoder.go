@@ -1,7 +1,6 @@
 package eth
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -35,7 +34,7 @@ func (e *Encoder) Buffer() []byte {
 	return e.buffer
 }
 
-func (e *Encoder) WriteMethod(method *MethodCall) error {
+func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 	methodSignature := method.MethodDef.Signature()
 	err := e.Write("method", methodSignature)
 	if err != nil {
@@ -57,9 +56,7 @@ func (e *Encoder) WriteMethod(method *MethodCall) error {
 
 	slicesToInsert := []arrayToInsert{}
 	for idx, param := range method.MethodDef.Parameters {
-
-		isAnArray, _ := isArray(param.TypeName)
-		if isAnArray {
+		if isOffsetType(param.TypeName) {
 			slicesToInsert = append(slicesToInsert, arrayToInsert{
 				buffOffset: uint64(len(e.buffer)),
 				typeName:   param.TypeName,
@@ -97,7 +94,7 @@ func (e *Encoder) WriteMethod(method *MethodCall) error {
 	for sidx, slc := range slicesToInsert {
 		// offset should not include the signatures' bytes
 		dataLength := uint64(len(e.buffer)) - 4
-		d, err := e.encodeUint64(dataLength)
+		d, err := e.encodeUint(dataLength, 64)
 		if err != nil {
 			return fmt.Errorf("unable to encode slice offset: %w", err)
 		}
@@ -138,22 +135,6 @@ func (e *Encoder) Write(typeName string, in interface{}) error {
 		return e.write(resolvedTypeName, in)
 	}
 
-	// byte array optimization
-	if typeName == "bytes" {
-		data := in.([]byte)
-		// TOFIX: is this assumption good?
-		err := e.write("uint64", uint64(len(data)))
-		if err != nil {
-			return fmt.Errorf("cannot write byte array length: %w", err)
-		}
-
-		err = e.write("bytes", data)
-		if err != nil {
-			return fmt.Errorf("cannot write byte array: %w", err)
-		}
-		return nil
-	}
-
 	s := reflect.ValueOf(in)
 	switch s.Kind() {
 	case reflect.Slice:
@@ -171,29 +152,44 @@ func (e *Encoder) Write(typeName string, in interface{}) error {
 		}
 		return nil
 	}
-	return fmt.Errorf("type %q is not handled right now", resolvedTypeName)
+	return fmt.Errorf("type %q is not handled right now", typeName)
 }
 
 func (e *Encoder) write(typeName string, in interface{}) error {
 	var d []byte
 	var err error
 	switch typeName {
-	case "address":
-		d, err = e.encodeAddress(in.(Address))
-	case "uint64":
-		d, err = e.encodeUint64(in.(uint64))
-	case "uint112":
-		d, err = e.encodeBigInt(in.(*big.Int))
-	case "uint256":
-		d, err = e.encodeBigInt(in.(*big.Int))
 	case "bool":
 		d, err = e.encodeBool(in.(bool))
-	case "bytes":
-		d = in.([]byte)
+	case "uint8":
+		d, err = e.encodeUint(uint64(in.(uint8)), 8)
+	case "uint16":
+		d, err = e.encodeUint(uint64(in.(uint16)), 16)
+	case "uint24":
+		d, err = e.encodeUint(uint64(in.(uint32)), 24)
+	case "uint32":
+		d, err = e.encodeUint(uint64(in.(uint32)), 32)
+	case "uint40":
+		d, err = e.encodeUint(in.(uint64), 40)
+	case "uint48":
+		d, err = e.encodeUint(in.(uint64), 48)
+	case "uint56":
+		d, err = e.encodeUint(in.(uint64), 56)
+	case "uint64":
+		d, err = e.encodeUint(in.(uint64), 64)
+	case "uint72", "uint80", "uint88", "uint96", "uint104", "uint112", "uint120", "uint128", "uint136", "uint144", "uint152", "uint160", "uint168", "uint176", "uint184", "uint192", "uint200", "uint208", "uint216", "uint224", "uint232", "uint240", "uint248", "uint256":
+		d, err = e.encodeBigInt(in.(*big.Int))
 	case "method":
 		d, err = e.encodeMethod(in.(string))
+	case "address":
+		d, err = e.encodeAddress(in.(Address))
+	case "string":
+		d, err = e.encodeString(in.(string))
+	case "bytes":
+		d, err = e.encodeBytes(in.([]byte))
 	case "event":
 		d, err = e.encodeEvent(in.(string))
+
 	default:
 		return fmt.Errorf("type %q is not handled right now", typeName)
 	}
@@ -206,9 +202,14 @@ func (e *Encoder) write(typeName string, in interface{}) error {
 	return nil
 }
 
-func (e *Encoder) encodeUint64(input uint64) ([]byte, error) {
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, input)
+func (e *Encoder) encodeUint(input uint64, size uint64) ([]byte, error) {
+	byteCount := size / 8
+	buf := make([]byte, byteCount)
+	_ = buf[byteCount-1] // early bounds check to guarantee safety of writes below
+	for i := uint64(0); i < byteCount; i++ {
+		shift := (byteCount - 1 - i) * 8
+		buf[i] = byte(input >> shift)
+	}
 	return pad(buf), nil
 }
 
@@ -237,6 +238,38 @@ func (e *Encoder) encodeMethod(input string) ([]byte, error) {
 		return nil, err
 	}
 	return kec.Sum(nil)[0:4], nil
+}
+
+func (e *Encoder) encodeBytes(input []byte) ([]byte, error) {
+	buf := make([]byte, 32+len(input))
+	l, err := e.encodeUint(uint64(len(input)), 64)
+	if err != nil {
+		return nil, fmt.Errorf("unable to encode string size: %w", err)
+	}
+	for i := 0; i < 32; i++ {
+		buf[i] = l[i]
+	}
+	for i := 0; i < len(input); i++ {
+		buf[32+i] = input[i]
+	}
+	return buf, nil
+}
+
+func (e *Encoder) encodeString(input string) ([]byte, error) {
+	// size: 32 bytes[length of the string] +  num_char[1 char is 1 byte] + x
+	// where x  pads the the number to fill the last 32 bytes
+	buf := make([]byte, (32 + len(input) + (32 - len(input)%32)))
+	l, err := e.encodeUint(uint64(len(input)), 64)
+	if err != nil {
+		return nil, fmt.Errorf("unable to encode string size: %w", err)
+	}
+	for i := 0; i < 32; i++ {
+		buf[i] = l[i]
+	}
+	for i := 0; i < len(input); i++ {
+		buf[32+i] = byte(input[i])
+	}
+	return buf, nil
 }
 
 func (e *Encoder) encodeEvent(input string) ([]byte, error) {
@@ -268,14 +301,15 @@ func pad(in []byte) []byte {
 	return d
 }
 
+func isOffsetType(typeName string) bool {
+	arr, _ := isArray(typeName)
+	return arr || (typeName == "bytes") || (typeName == "string")
+}
+
 func isArray(typeName string) (bool, string) {
 	check := strings.HasSuffix(typeName, "[]")
 	if check {
 		return true, strings.TrimRight(typeName, "[]")
-	}
-
-	if typeName == "bytes" {
-		return true, "bytes"
 	}
 	return false, typeName
 }
