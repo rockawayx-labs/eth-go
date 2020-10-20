@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/dfuse-io/eth-go/constants"
 	"go.uber.org/zap"
 )
 
@@ -188,7 +187,7 @@ func (d *Decoder) readMethod() (out string, err error) {
 		return out, err
 	}
 	idx := hex.EncodeToString(data)
-	out, ok := constants.Signatures[idx]
+	out, ok := Signatures[idx]
 	if !ok {
 		return "", fmt.Errorf("method signature not found for %s", idx)
 	}
