@@ -17,7 +17,6 @@ var Addresses = map[string]map[string]string{
 		"0xc5be99a02c6857f9eac67bbce58df5572498f40c":  "UniV2-WETH/AMPL",
 		"0xdc98556ce24f007a5ef6dc1ce96322d65832a819":  "UniV2-WETH/PICKLE",
 		"0xa2107fa5b38d9bbd2c461d6edf11b11a50f6b974":  "UniV2-WETH/LINK",
-		"0x85609c626b532ca8bea6c36be53afdcb15dd4a48":  "UniV2-WETH/wANATHA",
 		"0x2e0721e6c951710725997928dcaaa05daafa031b":  "UniV2-WETH/ENCORE",
 		"0x514906fc121c7878424a5c928cad1852cc545892":  "UniV2-FARM/USDC",
 		"0x8f3496bceaba7e935550c8bbb526fc433faa68b0":  "UniV2-YFI-/yYFI",
@@ -226,6 +225,7 @@ var Addresses = map[string]map[string]string{
 		"0x35dfdad99dd022adbb63754aebc9365f66b29807": "Fairy Finance",
 		"0xe4883bcb919386bb5f48ef59b7c31c1d93a51a57": "SATOPAY YIELD",
 		"0xB1f66997A5760428D3a87D68b90BfE0aE64121cC": "LuaToken",
+		"0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": "UMA Voting Token v1",
 	},
 	"eth-ropsten": {
 		"0xf164fc0ec4e93095b804a4795bbe1e041497b92a": "UniswapV2Router01",
