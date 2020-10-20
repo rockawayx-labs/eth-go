@@ -1,6 +1,10 @@
 package eth
 
-import "strings"
+import (
+	"encoding/hex"
+	"fmt"
+	"strings"
+)
 
 // SanitizeHex removes the prefix `0x` if it exists
 // and ensures there is an even number of characters in the string,
@@ -45,4 +49,13 @@ func ConcatHex(with0x bool, in ...string) (out string) {
 		out += SanitizeHex(s)
 	}
 	return
+}
+
+func MustDecodeString(hexStr string) []byte {
+	hexStr = SanitizeHex(hexStr)
+	d, err := hex.DecodeString(hexStr)
+	if err != nil {
+		panic(fmt.Errorf("unable to decode hex string: %w", err))
+	}
+	return d
 }

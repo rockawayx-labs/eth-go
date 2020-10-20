@@ -3,8 +3,9 @@ package eth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogDecoder_ReadTypedTopic(t *testing.T) {
@@ -29,7 +30,7 @@ func TestLogDecoder_ReadTypedTopic(t *testing.T) {
 
 	var topics [][]byte
 	for _, t := range l.Topics {
-		topics = append(topics, MustNewAddress(t))
+		topics = append(topics, MustDecodeString(t))
 	}
 
 	log := &Log{
