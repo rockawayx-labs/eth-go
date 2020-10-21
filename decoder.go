@@ -187,7 +187,7 @@ func (d *Decoder) readMethod() (out string, err error) {
 		return out, err
 	}
 	idx := hex.EncodeToString(data)
-	out, ok := Signatures[idx]
+	out, ok := KnownSignatures[idx]
 	if !ok {
 		return "", fmt.Errorf("method signature not found for %s", idx)
 	}

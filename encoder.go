@@ -120,7 +120,7 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 		if traceEnabled {
 			zlog.Debug("inserted slice in buffer",
 				zap.Stringer("buf", buffer(e.buffer)),
-				zap.String("input_type", slc.typeName),
+				zap.String("input_tyewpe", slc.typeName),
 				zap.Int("slice_idx", sidx),
 			)
 		}
