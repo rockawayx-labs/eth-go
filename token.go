@@ -60,7 +60,7 @@ func (t TokenAmount) Bytes() []byte {
 }
 
 func (t TokenAmount) Format(truncateDecimalCount uint) string {
-	v := prettifyBigIntWithDecimals(t.Amount, t.Token.Decimals, truncateDecimalCount)
+	v := PrettifyBigIntWithDecimals(t.Amount, t.Token.Decimals, truncateDecimalCount)
 	return fmt.Sprintf("%s %s", v, t.Token.Symbol)
 }
 
@@ -68,7 +68,7 @@ func (t TokenAmount) String() string {
 	return t.Format(4)
 }
 
-func prettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uint) string {
+func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uint) string {
 	bigDecimals := DecimalsInBigInt(uint32(precision))
 	whole := new(big.Int).Div(in, bigDecimals)
 
