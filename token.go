@@ -69,6 +69,10 @@ func (t TokenAmount) String() string {
 }
 
 func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uint) string {
+	if precision == 0 {
+		return fmt.Sprintf("%s", in)
+	}
+
 	bigDecimals := DecimalsInBigInt(uint32(precision))
 	whole := new(big.Int).Div(in, bigDecimals)
 
