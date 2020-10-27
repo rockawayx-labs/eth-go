@@ -32,6 +32,7 @@ func MustNewAddress(input string) Address {
 }
 
 func NewAddress(input string) (out Address, err error) {
+	input = SanitizeHex(input)
 	bytes, err := hex.DecodeString(input)
 	if err != nil {
 		return out, fmt.Errorf("invalid address: %w", err)
