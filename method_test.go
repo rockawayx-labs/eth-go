@@ -106,6 +106,26 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "testing address[]",
+			signature: "method(address[])",
+			inputs: []string{
+				"[\"0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c\",\"0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c\"]",
+			},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "address[]"}},
+			},
+			expectMethodCall: &MethodCall{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "address[]"}}},
+				Data: []interface{}{
+					AddressArray{
+						MustNewAddress("5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"),
+						MustNewAddress("5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"),
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

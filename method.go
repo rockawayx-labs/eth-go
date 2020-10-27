@@ -92,9 +92,16 @@ func (f *MethodCall) AppendArgFromString(v string) {
 			return
 		}
 		out = data
+	case "address[]":
+		var addrs []Address
+		err := json.Unmarshal([]byte(v), &addrs)
+		if err != nil {
+			f.err = append(f.err, fmt.Errorf("unable to convert %q to address: %w", v, err))
+			return
+		}
+		out = addrs
 	case "address":
-		var addr Address
-		err := json.Unmarshal([]byte(fmt.Sprintf("%q", v)), &addr)
+		addr, err := NewAddress(v)
 		if err != nil {
 			f.err = append(f.err, fmt.Errorf("unable to convert %q to address: %w", v, err))
 			return
@@ -116,6 +123,9 @@ func (f *MethodCall) AppendArgFromString(v string) {
 		}
 	case "bool":
 		out = v == "true"
+	default:
+		f.err = append(f.err, fmt.Errorf("cannot append arg from string for unsupported type %q", param.TypeName))
+		return
 	}
 	f.Data = append(f.Data, out)
 }
