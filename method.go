@@ -17,6 +17,21 @@ type MethodParameter struct {
 	Payable        bool
 }
 
+func newMethodParameter(mStr string) (*MethodParameter, error) {
+	mStr = strings.TrimLeft(mStr, " ")
+	mStr = strings.TrimRight(mStr, " ")
+	if mStr == "" {
+		return nil, fmt.Errorf("invalid method parameter")
+	}
+	chunks := strings.Split(mStr, " ")
+	// TODO: we should check the type
+	m := &MethodParameter{TypeName: chunks[0]}
+	if len(chunks) > 1 {
+		m.Name = chunks[len(chunks)-1]
+	}
+	return m, nil
+}
+
 type MethodDef struct {
 	Name             string
 	Parameters       []*MethodParameter
@@ -162,9 +177,11 @@ func extractInputsFromSignature(signature string) (out []*MethodParameter, err e
 		return nil, err
 	}
 	for _, t := range types {
-		out = append(out, &MethodParameter{
-			TypeName: t,
-		})
+		m, err := newMethodParameter(t)
+		if err != nil {
+			return nil, fmt.Errorf("invalid method parameter %q: %w", t, err)
+		}
+		out = append(out, m)
 	}
 	return out, nil
 }
@@ -173,7 +190,6 @@ func extractTypesFromSignature(method string) ([]string, error) {
 	s := methodInputsRE.FindString(method)
 	s = strings.TrimLeft(s, "(")
 	s = strings.TrimRight(s, ")")
-	s = strings.Replace(s, " ", "", -1)
 	if s == "" {
 		return []string{}, nil
 	}

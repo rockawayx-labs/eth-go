@@ -198,6 +198,27 @@ func TestNewMethodDef(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "method mutli arg and names",
+			signature: " transferFrom(address sender, address recipient, uint256 amount) ",
+			expectMethodDef: &MethodDef{
+				Name: "transferFrom",
+				Parameters: []*MethodParameter{
+					{
+						Name:     "sender",
+						TypeName: "address",
+					},
+					{
+						Name:     "recipient",
+						TypeName: "address",
+					},
+					{
+						Name:     "amount",
+						TypeName: "uint256",
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -207,6 +228,43 @@ func TestNewMethodDef(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectMethodDef, methodDef)
+			}
+		})
+	}
+
+}
+
+func TestNewMethodParameter(t *testing.T) {
+	var tests = []struct {
+		name              string
+		methodParameter   string
+		expectMethodParam *MethodParameter
+		expectError       bool
+	}{
+		{
+			name:            "method no arg",
+			methodParameter: "address",
+			expectMethodParam: &MethodParameter{
+				TypeName: "address",
+			},
+		},
+		{
+			name:            "method one arg",
+			methodParameter: "address recipient",
+			expectMethodParam: &MethodParameter{
+				Name:     "recipient",
+				TypeName: "address",
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m, err := newMethodParameter(test.methodParameter)
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expectMethodParam, m)
 			}
 		})
 	}
