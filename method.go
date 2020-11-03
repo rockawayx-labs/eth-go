@@ -56,10 +56,17 @@ func NewMethodDef(signature string) (*MethodDef, error) {
 	}, nil
 }
 
-func (f *MethodDef) NewCall() *MethodCall {
-	return &MethodCall{
-		MethodDef: f,
+func (f *MethodDef) NewCall(args ...interface{}) *MethodCall {
+	call := &MethodCall{MethodDef: f}
+	if len(args) > 0 {
+		call.Data = make([]interface{}, len(args))
 	}
+
+	for i, arg := range args {
+		call.Data[i] = arg
+	}
+
+	return call
 }
 
 func (f *MethodDef) methodID() []byte {
