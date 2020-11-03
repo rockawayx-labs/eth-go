@@ -86,7 +86,7 @@ func TestDecoder_Read(t *testing.T) {
 			name:      "method",
 			typeName:  "method",
 			in:        "0xa9059cbb",
-			expectOut: "transfer(address,uint256)",
+			expectOut: "transfer(address recipient,uint256 amount)",
 		},
 		{
 			name:      "string",
@@ -220,8 +220,8 @@ func TestDecoder_ReadMethodCall(t *testing.T) {
 				MethodDef: &MethodDef{
 					Name: "transfer",
 					Parameters: []*MethodParameter{
-						{TypeName: "address"},
-						{TypeName: "uint256"},
+						{TypeName: "address", Name: "recipient"},
+						{TypeName: "uint256", Name: "amount"},
 					},
 				},
 				Data: []interface{}{
@@ -237,12 +237,12 @@ func TestDecoder_ReadMethodCall(t *testing.T) {
 				MethodDef: &MethodDef{
 					Name: "entry",
 					Parameters: []*MethodParameter{
-						{TypeName: "uint256"},
-						{TypeName: "uint256"},
-						{TypeName: "bool"},
-						{TypeName: "address"},
-						{TypeName: "address"},
-						{TypeName: "bytes"},
+						{Name: "loanAmount", TypeName: "uint256"},
+						{Name: "loanTokenIndex", TypeName: "uint256"},
+						{Name: "burnChi", TypeName: "bool"},
+						{Name: "loanTokenAddress", TypeName: "address"},
+						{Name: "pairAddress", TypeName: "address"},
+						{Name: "data", TypeName: "bytes"},
 					},
 				},
 				Data: []interface{}{

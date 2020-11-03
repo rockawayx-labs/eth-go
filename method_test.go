@@ -119,7 +119,7 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 			expectMethodCall: &MethodCall{
 				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "address[]"}}},
 				Data: []interface{}{
-					AddressArray{
+					[]Address{
 						MustNewAddress("5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"),
 						MustNewAddress("5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c"),
 					},

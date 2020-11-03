@@ -72,6 +72,13 @@ func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uin
 	if precision == 0 {
 		return fmt.Sprintf("%s", in)
 	}
+	var isNegative bool
+	if in.Sign() < 0 {
+		isNegative = true
+		fmt.Println(in.String())
+		in = new(big.Int).Abs(in)
+		fmt.Println(in.String())
+	}
 
 	bigDecimals := DecimalsInBigInt(uint32(precision))
 	whole := new(big.Int).Div(in, bigDecimals)
@@ -83,5 +90,8 @@ func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uin
 		fractional = fractional[0:truncateDecimalCount]
 	}
 
+	if isNegative {
+		return fmt.Sprintf("-%s.%s", whole, fractional)
+	}
 	return fmt.Sprintf("%s.%s", whole, fractional)
 }
