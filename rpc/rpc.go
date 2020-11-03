@@ -60,11 +60,11 @@ func (c *Client) EstimateGas(trxObject map[string]string) (string, error) {
 }
 
 func (c *Client) callAtBlock(method string, trxObject map[string]string, blockAt string) (string, error) {
-	return c.rpcCall(method, []interface{}{trxObject, blockAt})
+	return c.DoRequest(method, []interface{}{trxObject, blockAt})
 }
 
 func (c *Client) SendRaw(rawData []byte) (string, error) {
-	return c.rpcCall("eth_sendRawTransaction", []interface{}{eth.PrefixedHex(hex.EncodeToString(rawData))})
+	return c.DoRequest("eth_sendRawTransaction", []interface{}{eth.PrefixedHex(hex.EncodeToString(rawData))})
 }
 
 func (c *Client) ChainID() (*big.Int, error) {
@@ -72,7 +72,7 @@ func (c *Client) ChainID() (*big.Int, error) {
 		return c.chainID, nil
 	}
 
-	resp, err := c.rpcCall("eth_chainId", []interface{}{})
+	resp, err := c.DoRequest("eth_chainId", []interface{}{})
 	if err != nil {
 		return nil, fmt.Errorf("unale to perform eth_chainId request: %w", err)
 	}
@@ -87,7 +87,7 @@ func (c *Client) ChainID() (*big.Int, error) {
 }
 
 func (c *Client) ProtocolVersion() (string, error) {
-	resp, err := c.rpcCall("eth_protocolVersion", []interface{}{})
+	resp, err := c.DoRequest("eth_protocolVersion", []interface{}{})
 	if err != nil {
 		return "", fmt.Errorf("unale to perform eth_protocolVersion request: %w", err)
 	}
@@ -102,7 +102,7 @@ type SyncingResp struct {
 }
 
 func (c *Client) Syncing() (*SyncingResp, error) {
-	resp, err := c.rpcCall("eth_syncing", []interface{}{})
+	resp, err := c.DoRequest("eth_syncing", []interface{}{})
 	if err != nil {
 		return nil, fmt.Errorf("unale to perform eth_syncing request: %w", err)
 	}
@@ -131,7 +131,7 @@ func (c *Client) Syncing() (*SyncingResp, error) {
 }
 
 func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
-	resp, err := c.rpcCall("eth_getTransactionCount", []interface{}{accountAddr.Pretty(), "latest"})
+	resp, err := c.DoRequest("eth_getTransactionCount", []interface{}{accountAddr.Pretty(), "latest"})
 	if err != nil {
 		return 0, fmt.Errorf("unale to perform eth_getTransactionCount request: %w", err)
 	}
@@ -145,7 +145,7 @@ func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
 }
 
 func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
-	resp, err := c.rpcCall("eth_getBalance", []interface{}{accountAddr.Pretty(), "latest"})
+	resp, err := c.DoRequest("eth_getBalance", []interface{}{accountAddr.Pretty(), "latest"})
 	if err != nil {
 		return nil, fmt.Errorf("unale to perform eth_getBalance request: %w", err)
 	}
@@ -162,7 +162,7 @@ func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
 }
 
 func (c *Client) GasPrice() (*big.Int, error) {
-	resp, err := c.rpcCall("eth_gasPrice", []interface{}{})
+	resp, err := c.DoRequest("eth_gasPrice", []interface{}{})
 	if err != nil {
 		return nil, fmt.Errorf("unale to perform eth_gasPrice request: %w", err)
 	}
@@ -183,7 +183,7 @@ type rpcRequest struct {
 	ID      int           `json:"id"`
 }
 
-func (c *Client) rpcCall(method string, params []interface{}) (string, error) {
+func (c *Client) DoRequest(method string, params []interface{}) (string, error) {
 	req := rpcRequest{
 		Params:  params,
 		JSONRPC: "2.0",
