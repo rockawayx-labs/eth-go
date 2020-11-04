@@ -75,9 +75,7 @@ func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uin
 	var isNegative bool
 	if in.Sign() < 0 {
 		isNegative = true
-		fmt.Println(in.String())
 		in = new(big.Int).Abs(in)
-		fmt.Println(in.String())
 	}
 
 	bigDecimals := DecimalsInBigInt(uint32(precision))

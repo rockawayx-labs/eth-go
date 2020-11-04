@@ -2,7 +2,6 @@ package eth
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,5 +45,4 @@ func TestLogDecoder_ReadTypedTopic(t *testing.T) {
 
 	t0Addr, err := decoder.ReadTypedTopic("address")
 	require.NoError(t, err)
-	fmt.Println(t0Addr)
 }
