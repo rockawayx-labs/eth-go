@@ -43,6 +43,6 @@ func TestLogDecoder_ReadTypedTopic(t *testing.T) {
 	decoder := NewLogDecoder(log)
 	_, _ = decoder.ReadTopic() //skips topic 0 (kessac(signature)
 
-	t0Addr, err := decoder.ReadTypedTopic("address")
+	_, err = decoder.ReadTypedTopic("address")
 	require.NoError(t, err)
 }
