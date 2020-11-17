@@ -69,9 +69,14 @@ func (t TokenAmount) String() string {
 }
 
 func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uint) string {
-	if precision == 0 {
-		return fmt.Sprintf("%s", in)
+	if in == nil {
+		return ""
 	}
+
+	if precision == 0 {
+		return in.String()
+	}
+
 	var isNegative bool
 	if in.Sign() < 0 {
 		isNegative = true
@@ -84,12 +89,13 @@ func PrettifyBigIntWithDecimals(in *big.Int, precision, truncateDecimalCount uin
 	reminder := new(big.Int).Rem(in, bigDecimals).String()
 	missingLeadingZeros := int(precision) - len(reminder)
 	fractional := strings.Repeat("0", missingLeadingZeros) + reminder
-	if len(fractional) > int(truncateDecimalCount) {
+	if truncateDecimalCount != 0 && len(fractional) > int(truncateDecimalCount) {
 		fractional = fractional[0:truncateDecimalCount]
 	}
 
 	if isNegative {
 		return fmt.Sprintf("-%s.%s", whole, fractional)
 	}
+
 	return fmt.Sprintf("%s.%s", whole, fractional)
 }
