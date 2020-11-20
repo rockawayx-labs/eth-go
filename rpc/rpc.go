@@ -2,8 +2,6 @@ package rpc
 
 import (
 	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -31,40 +29,39 @@ func NewClient(url string) *Client {
 	}
 }
 
-type ethCallData struct {
-	Params  []interface{} `json:"params"`
-	JSONRPC string        `json:"jsonrpc"`
-	Method  string        `json:"method"`
-	ID      int           `json:"id"`
+type CallParams struct {
+	// From the address the transaction is sent from (optional).
+	From eth.Address `json:"from,omitempty"`
+	// To the address the transaction is directed to (required).
+	To eth.Address `json:"to,omitempty"`
+	// GasLimit Integer of the gas provided for the transaction execution. eth_call consumes zero gas, but this parameter may be needed by some executions (optional).
+	GasLimit uint64 `json:"gas,omitempty"`
+	// GasPrice big integer of the gasPrice used for each paid gas (optional).
+	GasPrice *big.Int `json:"gasPrice,omitempty"`
+	// Value big integer of the value sent with this transaction (optional).
+	Value *big.Int `json:"value,omitempty"`
+	// Hash of the method signature and encoded parameters or any object that implements `MarshalJSONRPC` and serialize to a byte array, for details see Ethereum Contract ABI in the Solidity documentation (optional).
+	Data interface{} `json:"data,omitempty"`
 }
 
-/*
-The trxObject object:
-from: (optional) The address the transaction is sent from.
-to: The address the transaction is directed to.
-gas: (optional) Integer of the gas provided for the transaction execution. eth_call consumes zero gas, but this parameter may be needed by some executions.
-gasPrice: (optional) Integer of the gasPrice used for each paid gas
-value:	(optional) Integer of the value sent with this transaction
-data:	(optional) Hash of the method signature and encoded parameters. For details see Ethereum Contract ABI in the Solidity documentation
-*/
-func (c *Client) Call(trxObject map[string]string) (string, error) {
-	return c.callAtBlock("eth_call", trxObject, "latest")
+func (c *Client) Call(params CallParams) (string, error) {
+	return c.callAtBlock("eth_call", params, "latest")
 }
 
-func (c *Client) CallAtBlock(trxObject map[string]string, blockAt string) (string, error) {
-	return c.callAtBlock("eth_call", trxObject, blockAt)
+func (c *Client) CallAtBlock(params CallParams, blockAt string) (string, error) {
+	return c.callAtBlock("eth_call", params, blockAt)
 }
 
-func (c *Client) EstimateGas(trxObject map[string]string) (string, error) {
-	return c.callAtBlock("eth_estimateGas", trxObject, "latest")
+func (c *Client) EstimateGas(params CallParams) (string, error) {
+	return c.callAtBlock("eth_estimateGas", params, "latest")
 }
 
-func (c *Client) callAtBlock(method string, trxObject map[string]string, blockAt string) (string, error) {
-	return c.DoRequest(method, []interface{}{trxObject, blockAt})
+func (c *Client) callAtBlock(method string, params interface{}, blockAt string) (string, error) {
+	return c.DoRequest(method, []interface{}{params, blockAt})
 }
 
 func (c *Client) SendRaw(rawData []byte) (string, error) {
-	return c.DoRequest("eth_sendRawTransaction", []interface{}{eth.PrefixedHex(hex.EncodeToString(rawData))})
+	return c.DoRequest("eth_sendRawTransaction", []interface{}{rawData})
 }
 
 func (c *Client) ChainID() (*big.Int, error) {
@@ -190,15 +187,13 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 		Method:  method,
 		ID:      1,
 	}
-	reqCnt, err := json.Marshal(&req)
+	reqCnt, err := MarshalJSONRPC(&req)
 	if err != nil {
-		return "", fmt.Errorf("unable to marshall json_rpc request: %w", err)
+		return "", fmt.Errorf("unable to marshal json_rpc request: %w", err)
 	}
 
 	if traceEnabled {
-		zlog.Debug("json_rpc request",
-			zap.String("request", string(reqCnt)),
-		)
+		zlog.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
 	return c.doRequest(bytes.NewBuffer(reqCnt))

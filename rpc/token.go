@@ -7,46 +7,41 @@ import (
 	"github.com/dfuse-io/eth-go"
 )
 
+var decimalsCallData = eth.MustNewMethodDef("decimals()").NewCall().MustEncode()
+var nameCallData = eth.MustNewMethodDef("name()").NewCall().MustEncode()
+var symbolCallData = eth.MustNewMethodDef("symbol()").NewCall().MustEncode()
+
 func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
-	rpcTokenAddr := tokenAddr.Pretty()
-	decimals, err := c.Call(map[string]string{
-		"data": encodeMethod("decimals()"),
-		"to":   rpcTokenAddr,
-	})
+	decimals, err := c.Call(CallParams{To: tokenAddr, Data: decimalsCallData})
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve decimals for token %q: %w", rpcTokenAddr, err)
+		return nil, fmt.Errorf("unable to retrieve decimals for token %q: %w", tokenAddr, err)
 	}
 
-	name, err := c.Call(map[string]string{
-		"data": encodeMethod("name()"),
-		"to":   rpcTokenAddr,
-	})
+	name, err := c.Call(CallParams{To: tokenAddr, Data: nameCallData})
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve name for token %q: %w", rpcTokenAddr, err)
+		return nil, fmt.Errorf("unable to retrieve name for token %q: %w", tokenAddr, err)
 	}
 
-	symbol, err := c.Call(map[string]string{
-		"data": encodeMethod("symbol()"),
-		"to":   rpcTokenAddr,
-	})
+	symbol, err := c.Call(CallParams{To: tokenAddr, Data: symbolCallData})
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve name for symbol %q: %w", rpcTokenAddr, err)
+		return nil, fmt.Errorf("unable to retrieve symbol for token %q: %w", tokenAddr, err)
 	}
 
 	dec, err := eth.NewDecoderFromString(decimals)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve name for symbol %q: %w", rpcTokenAddr, err)
+		return nil, fmt.Errorf("unable to retrieve name for symbol %q: %w", tokenAddr, err)
 	}
+
 	decodedDecimals, err := dec.Read("uint256")
 	if err != nil {
 		return nil, fmt.Errorf("unable to decoding decimals %q: %w", decimals, err)
-
 	}
 
 	dec, err = eth.NewDecoderFromString(symbol)
 	if err != nil {
 		return nil, fmt.Errorf("unable to new decoder: %w", err)
 	}
+
 	_, err = dec.Read("uint256") // reading the initial string offset... we can ignore it
 	if err != nil {
 		return nil, fmt.Errorf("decoding symbol offset %s: %w", symbol, err)
@@ -80,11 +75,12 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	}, nil
 }
 
-func encodeMethod(methodStr string) string {
+func methodSignatureBytes(def *eth.MethodDef) []byte {
 	encoder := eth.NewEncoder()
-	err := encoder.Write("method", methodStr)
+	err := encoder.Write("method", def.Signature())
 	if err != nil {
-		return ""
+		return nil
 	}
-	return "0x" + encoder.String()
+
+	return encoder.Buffer()
 }

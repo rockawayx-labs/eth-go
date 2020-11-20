@@ -40,6 +40,15 @@ type MethodDef struct {
 	ViewOnly         bool
 }
 
+func MustNewMethodDef(signature string) *MethodDef {
+	def, err := NewMethodDef(signature)
+	if err != nil {
+		panic(fmt.Errorf("invalid method definition %q: %w", signature, err))
+	}
+
+	return def
+}
+
 func NewMethodDef(signature string) (*MethodDef, error) {
 	methodName := extractMethodNameFromSignature(signature)
 	if methodName == "" {
@@ -156,10 +165,18 @@ func (f *MethodCall) AppendArg(v interface{}) {
 	f.Data = append(f.Data, v)
 }
 
+func (f *MethodCall) MustEncode() []byte {
+	out, err := f.Encode()
+	if err != nil {
+		panic(fmt.Errorf("unable to encode method call: %w", err))
+	}
+
+	return out
+}
+
 func (f *MethodCall) Encode() ([]byte, error) {
 	if len(f.err) > 0 {
 		return nil, fmt.Errorf("%s", f.err)
-
 	}
 	enc := NewEncoder()
 	err := enc.WriteMethodCall(f)
@@ -167,6 +184,20 @@ func (f *MethodCall) Encode() ([]byte, error) {
 		return nil, err
 	}
 	return enc.Buffer(), nil
+}
+
+func (f *MethodCall) MarshalJSONRPC() ([]byte, error) {
+	if len(f.err) > 0 {
+		return nil, fmt.Errorf("%s", f.err)
+	}
+
+	enc := Encoder{}
+	err := enc.WriteMethodCall(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(`"0x` + enc.String() + `"`), nil
 }
 
 var methodRE = regexp.MustCompile(`(.*)\(`)

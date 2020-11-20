@@ -29,6 +29,7 @@ func (h Hex) Bytes() []byte                    { return h[:] }
 func (h Hex) MarshalText() ([]byte, error)     { return bytes(h).MarshalText() }
 func (h Hex) ID() uint64                       { return bytes(h).ID() }
 func (h Hex) MarshalJSON() ([]byte, error)     { return bytes(h).MarshalJSON() }
+func (h Hex) MarshalJSONRPC() ([]byte, error)  { return bytes(h).MarshalJSONRPC() }
 func (h *Hex) UnmarshalJSON(data []byte) error { return (*bytes)(h).UnmarshalJSON(data) }
 
 type Hash []byte
@@ -52,6 +53,7 @@ func (h Hash) Bytes() []byte                    { return h[:] }
 func (h Hash) MarshalText() ([]byte, error)     { return bytes(h).MarshalText() }
 func (h Hash) ID() uint64                       { return bytes(h).ID() }
 func (h Hash) MarshalJSON() ([]byte, error)     { return bytes(h).MarshalJSON() }
+func (h Hash) MarshalJSONRPC() ([]byte, error)  { return bytes(h).MarshalJSONRPC() }
 func (h *Hash) UnmarshalJSON(data []byte) error { return (*bytes)(h).UnmarshalJSON(data) }
 
 type Address []byte
@@ -85,6 +87,7 @@ func (a Address) Bytes() []byte                    { return a[:] }
 func (a Address) MarshalText() ([]byte, error)     { return bytes(a).MarshalText() }
 func (a Address) ID() uint64                       { return bytes(a).ID() }
 func (a Address) MarshalJSON() ([]byte, error)     { return bytes(a).MarshalJSON() }
+func (a Address) MarshalJSONRPC() ([]byte, error)  { return bytes(a).MarshalJSONRPC() }
 func (a *Address) UnmarshalJSON(data []byte) error { return (*bytes)(a).UnmarshalJSON(data) }
 
 type bytes []byte
@@ -128,7 +131,11 @@ func (b bytes) ID() uint64 {
 }
 
 func (b bytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hex.EncodeToString([]byte(b)))
+	return []byte(`"` + hex.EncodeToString([]byte(b)) + `"`), nil
+}
+
+func (b bytes) MarshalJSONRPC() ([]byte, error) {
+	return []byte(`"` + b.Pretty() + `"`), nil
 }
 
 func (b *bytes) UnmarshalJSON(data []byte) error {

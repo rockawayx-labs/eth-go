@@ -16,7 +16,7 @@ type Decoder struct {
 }
 
 func NewDecoderFromString(input string) (*Decoder, error) {
-	data, err := hex.DecodeString(SanitizeHex(input))
+	data, err := NewHex(input)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode hex input %q: %w", input, err)
 	}
