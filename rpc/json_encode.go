@@ -419,7 +419,6 @@ func newTypeEncoder(t reflect.Type, allowAddr bool) encoderFunc {
 	// the address of the value - otherwise we end up with an
 	// allocation as we cast the value to an interface.
 	if t.Kind() != reflect.Ptr && allowAddr {
-		fmt.Println("Not pointer type and allow addr", reflect.PtrTo(t))
 		if t == bigIntType {
 			return bigIntEncoder
 		}
