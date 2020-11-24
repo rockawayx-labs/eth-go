@@ -1,13 +1,11 @@
 package eth
 
 import (
-	"os"
-
 	"github.com/dfuse-io/logging"
 	"go.uber.org/zap"
 )
 
-var traceEnabled = os.Getenv("TRACE") == "true"
+var traceEnabled = logging.IsTraceEnabled("eth-go", "github.com/dfuse-io/eth-go")
 var zlog *zap.Logger
 
 func init() {

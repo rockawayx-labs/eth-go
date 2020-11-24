@@ -181,10 +181,67 @@ func TestNewMethodDef(t *testing.T) {
 			name:      "method one arg",
 			signature: "method(address)",
 			expectMethodDef: &MethodDef{
-				Name: "method",
-				Parameters: []*MethodParameter{
-					{TypeName: "address"},
-				},
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "address"}},
+			},
+		},
+		{
+			name:      "method one array arg",
+			signature: "method(address[])",
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "address[]"}},
+			},
+		},
+		{
+			name:      "method one named array arg",
+			signature: "method(address[] ids)",
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{Name: "ids", TypeName: "address[]"}},
+			},
+		},
+		{
+			name:      "method one payable arg",
+			signature: "method(address payable)",
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "address", Payable: true}},
+			},
+		},
+		{
+			name:      "method one payable named arg",
+			signature: "method(address payable recipient)",
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{Name: "recipient", TypeName: "address", Payable: true}},
+			},
+		},
+		{
+			name:      "method one arg with returns",
+			signature: "method(address) (uint256)",
+			expectMethodDef: &MethodDef{
+				Name:             "method",
+				Parameters:       []*MethodParameter{{TypeName: "address"}},
+				ReturnParameters: []*MethodParameter{{TypeName: "uint256"}},
+			},
+		},
+		{
+			name:      "method one arg with named returns",
+			signature: "method(address) (uint256 value)",
+			expectMethodDef: &MethodDef{
+				Name:             "method",
+				Parameters:       []*MethodParameter{{TypeName: "address"}},
+				ReturnParameters: []*MethodParameter{{Name: "value", TypeName: "uint256"}},
+			},
+		},
+		{
+			name:      "method one arg with returns keyword",
+			signature: "method(address) returns (uint256)",
+			expectMethodDef: &MethodDef{
+				Name:             "method",
+				Parameters:       []*MethodParameter{{TypeName: "address"}},
+				ReturnParameters: []*MethodParameter{{TypeName: "uint256"}},
 			},
 		},
 		{
@@ -204,18 +261,9 @@ func TestNewMethodDef(t *testing.T) {
 			expectMethodDef: &MethodDef{
 				Name: "transferFrom",
 				Parameters: []*MethodParameter{
-					{
-						Name:     "sender",
-						TypeName: "address",
-					},
-					{
-						Name:     "recipient",
-						TypeName: "address",
-					},
-					{
-						Name:     "amount",
-						TypeName: "uint256",
-					},
+					{Name: "sender", TypeName: "address"},
+					{Name: "recipient", TypeName: "address"},
+					{Name: "amount", TypeName: "uint256"},
 				},
 			},
 		},

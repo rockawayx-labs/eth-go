@@ -7,9 +7,13 @@ import (
 	"github.com/dfuse-io/eth-go"
 )
 
-var decimalsCallData = eth.MustNewMethodDef("decimals()").NewCall().MustEncode()
-var nameCallData = eth.MustNewMethodDef("name()").NewCall().MustEncode()
-var symbolCallData = eth.MustNewMethodDef("symbol()").NewCall().MustEncode()
+var decimalsMethodDef = eth.MustNewMethodDef("decimals() (uint256)")
+var nameMethodDef = eth.MustNewMethodDef("name() (string)")
+var symbolMethodDef = eth.MustNewMethodDef("symbol() (string)")
+
+var decimalsCallData = decimalsMethodDef.NewCall().MustEncode()
+var nameCallData = nameMethodDef.NewCall().MustEncode()
+var symbolCallData = symbolMethodDef.NewCall().MustEncode()
 
 var b0 = new(big.Int)
 
@@ -36,52 +40,32 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	var decimals interface{} = b0
 	var symbol interface{} = ""
 	var name interface{} = ""
-	var dec *eth.Decoder
 
 	if decimalsResult != "0x" {
-		dec, err = eth.NewDecoderFromString(decimalsResult)
-		if err != nil {
-			return nil, fmt.Errorf("new decimals decoder %q for %q: %w", decimalsResult, tokenAddr, err)
-		}
-
-		decimals, err = dec.Read("uint256")
+		out, err := decimalsMethodDef.DecodeOutput(eth.MustNewHex(decimalsResult))
 		if err != nil {
 			return nil, fmt.Errorf("decode decimals %q: %w", decimalsResult, err)
 		}
+
+		decimals = out[0]
 	}
 
 	if symbolResult != "0x" {
-		dec, err = eth.NewDecoderFromString(symbolResult)
+		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(symbolResult))
 		if err != nil {
-			return nil, fmt.Errorf("new symbol decoder: %w", err)
+			return nil, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
 		}
 
-		_, err = dec.Read("uint256") // reading the initial string offset... we can ignore it
-		if err != nil {
-			return nil, fmt.Errorf("decoding symbol offset %s: %w", symbolResult, err)
-		}
-
-		symbol, err = dec.Read("string")
-		if err != nil {
-			return nil, fmt.Errorf("decoding symbol %s: %w", symbolResult, err)
-		}
+		symbol = out[0]
 	}
 
 	if nameResult != "0x" {
-		dec, err = eth.NewDecoderFromString(nameResult)
+		out, err := nameMethodDef.DecodeOutput(eth.MustNewHex(nameResult))
 		if err != nil {
-			return nil, fmt.Errorf("new decoder: %w", err)
+			return nil, fmt.Errorf("decode name %q: %w", nameResult, err)
 		}
 
-		_, err = dec.Read("uint256") // reading the initial string offset... we can ignore it
-		if err != nil {
-			return nil, fmt.Errorf("decoding name offset %s: %w", symbolResult, err)
-		}
-
-		name, err = dec.Read("string")
-		if err != nil {
-			return nil, fmt.Errorf("decoding name %q: %w", nameResult, err)
-		}
+		name = out[0]
 	}
 
 	return &eth.Token{

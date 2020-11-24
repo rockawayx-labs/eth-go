@@ -55,9 +55,22 @@ func (d *Decoder) ReadMethodCall() (*MethodCall, error) {
 		return nil, err
 	}
 
-	methodCall := methodDef.NewCall()
+	// Method offset of 4 since all offset jump must take into accounts the first 4 bytes of the input
+	parameters, err := d.readParameters(methodDef.Parameters, 4)
+	if err != nil {
+		return nil, fmt.Errorf("read: %w", err)
+	}
 
-	for _, param := range methodCall.MethodDef.Parameters {
+	return methodDef.NewCall(parameters...), nil
+}
+
+func (d *Decoder) ReadOutput(parameters []*MethodParameter) (out []interface{}, err error) {
+	return d.readParameters(parameters, 0)
+}
+
+func (d *Decoder) readParameters(parameters []*MethodParameter, methodOffset uint64) (out []interface{}, err error) {
+	out = make([]interface{}, len(parameters))
+	for i, param := range parameters {
 		var currentOffset uint64
 
 		isOffset := isOffsetType(param.TypeName)
@@ -67,22 +80,21 @@ func (d *Decoder) ReadMethodCall() (*MethodCall, error) {
 			if err != nil {
 				return nil, fmt.Errorf("unable to array lenght %w", err)
 			}
-			// 4 bytes here is to take into account the method name
-			d.offset = (jumpToOffset.(*big.Int).Uint64() + 4)
+			d.offset = (jumpToOffset.(*big.Int).Uint64() + methodOffset)
 		}
 
-		out, err := d.Read(param.TypeName)
+		value, err := d.Read(param.TypeName)
 		if err != nil {
-			return nil, fmt.Errorf("unable to decode method input: %w", err)
+			return nil, fmt.Errorf("unable to decode type %q at offset %d: %w", param.TypeName, d.offset, err)
 		}
 
 		if isOffset {
 			d.offset = (currentOffset + 32)
 		}
 
-		methodCall.AppendArg(out)
+		out[i] = value
 	}
-	return methodCall, nil
+	return
 }
 
 func (d *Decoder) Read(typeName string) (interface{}, error) {

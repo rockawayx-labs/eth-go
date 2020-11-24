@@ -4,10 +4,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type MethodParameter struct {
@@ -50,18 +53,15 @@ func MustNewMethodDef(signature string) *MethodDef {
 }
 
 func NewMethodDef(signature string) (*MethodDef, error) {
-	methodName := extractMethodNameFromSignature(signature)
-	if methodName == "" {
-		return nil, fmt.Errorf("invalid signature: %s", signature)
-	}
-	params, err := extractInputsFromSignature(signature)
+	method, inputs, outputs, err := parseSignature(signature)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve inputs %q: %w", signature, err)
+		return nil, fmt.Errorf("invalid signature %q: %w", signature, err)
 	}
 
 	return &MethodDef{
-		Name:       methodName,
-		Parameters: params,
+		Name:             method,
+		Parameters:       inputs,
+		ReturnParameters: outputs,
 	}, nil
 }
 
@@ -98,6 +98,14 @@ func (f *MethodDef) String() string {
 	}
 
 	return fmt.Sprintf("%s(%s)", f.Name, strings.Join(args, ", "))
+}
+
+func (f *MethodDef) DecodeOutput(data []byte) ([]interface{}, error) {
+	if len(f.ReturnParameters) == 0 {
+		return nil, fmt.Errorf("no return parameters defined for method")
+	}
+
+	return NewDecoder(data).ReadOutput(f.ReturnParameters)
 }
 
 type MethodCall struct {
@@ -200,36 +208,70 @@ func (f *MethodCall) MarshalJSONRPC() ([]byte, error) {
 	return []byte(`"0x` + enc.String() + `"`), nil
 }
 
-var methodRE = regexp.MustCompile(`(.*)\(`)
-var methodInputsRE = regexp.MustCompile(`\((.*?)\)`)
+var identifierPart = `([a-zA-Z$_][a-zA-Z0-9$_]*)`
+var methodRegex = regexp.MustCompile(identifierPart + `\(` + `([^\)]*)` + `\)` + `\s*(returns)?\s*` + `(\(` + `([^\)]*)` + `\))?`)
+var methodRegexGroupCount = 6
 
-func extractMethodNameFromSignature(signature string) string {
-	methodName := methodRE.FindString(signature)
-	methodName = strings.TrimRight(methodName, "(")
-	return strings.Replace(methodName, " ", "", -1) // this should not do anything
+func parseSignature(signature string) (method string, inputs []*MethodParameter, outputs []*MethodParameter, err error) {
+	matches := methodRegex.FindAllStringSubmatch(signature, 1)
+	if len(matches) == 0 {
+		return "", nil, nil, fmt.Errorf("invalid signature: %s", signature)
+	}
+
+	match := matches[0]
+	if traceEnabled {
+		zlog.Debug("got a match for signature", zap.Int("count", len(match)), zap.Strings("groups", match))
+	}
+
+	if len(match) != methodRegexGroupCount {
+		panic(fmt.Errorf("method regex was modified without updating code, expected %d groups, got %d", methodRegexGroupCount, len(match)))
+	}
+
+	method = match[1]
+
+	inputList := match[2]
+	if inputList != "" {
+		inputs = parseParameterList(inputList)
+	}
+
+	returnsList := match[5]
+	if returnsList != "" {
+		outputs = parseParameterList(returnsList)
+	}
+
+	return
 }
 
-func extractInputsFromSignature(signature string) (out []*MethodParameter, err error) {
-	types, err := extractTypesFromSignature(signature)
-	if err != nil {
-		return nil, err
+var typeNamePart = `(([a-z0-9]+)(\s+(payable|calldata|memory|storage))?(\[\])?)`
+var parameterRegex = regexp.MustCompile(typeNamePart + `(\s+` + identifierPart + `)?`)
+var parameterRegexGroupCount = 8
+
+func parseParameterList(list string) (out []*MethodParameter) {
+	matches := parameterRegex.FindAllStringSubmatch(list, math.MaxInt64)
+	if len(matches) <= 0 {
+		return nil
 	}
-	for _, t := range types {
-		m, err := newMethodParameter(t)
-		if err != nil {
-			return nil, fmt.Errorf("invalid method parameter %q: %w", t, err)
+
+	out = make([]*MethodParameter, len(matches))
+	for i, match := range matches {
+		if traceEnabled {
+			zlog.Debug("got a match for parameter", zap.Int("count", len(match)), zap.Strings("groups", match))
 		}
-		out = append(out, m)
-	}
-	return out, nil
-}
 
-func extractTypesFromSignature(method string) ([]string, error) {
-	s := methodInputsRE.FindString(method)
-	s = strings.TrimLeft(s, "(")
-	s = strings.TrimRight(s, ")")
-	if s == "" {
-		return []string{}, nil
+		if len(match) != parameterRegexGroupCount {
+			panic(fmt.Errorf("parameter regex was modified without updating code, expected %d groups, got %d", parameterRegexGroupCount, len(match)))
+		}
+
+		parameter := &MethodParameter{TypeName: match[2], Payable: match[4] == "payable"}
+		if match[5] != "" {
+			parameter.TypeName += "[]"
+		}
+
+		if match[7] != "" {
+			parameter.Name = match[7]
+		}
+
+		out[i] = parameter
 	}
-	return strings.Split(s, ","), nil
+	return
 }
