@@ -76,16 +76,24 @@ func (d *Decoder) readParameters(parameters []*MethodParameter, methodOffset uin
 		isOffset := isOffsetType(param.TypeName)
 		if isOffset {
 			currentOffset = d.offset
-			jumpToOffset, err := d.read("uint256")
+			offset, err := d.read("uint256")
 			if err != nil {
-				return nil, fmt.Errorf("unable to array lenght %w", err)
+				return nil, fmt.Errorf("read offset for type %q (element #%d) at offset %d: %w", param.TypeName, i, d.offset, err)
 			}
-			d.offset = (jumpToOffset.(*big.Int).Uint64() + methodOffset)
+
+			jumpToOffset := offset.(*big.Int).Uint64() + methodOffset
+
+			// The minus 32 is to ensure that offset hits a location where at least 32 bytes can be read
+			if jumpToOffset > d.total-32 {
+				return nil, fmt.Errorf("invalid offset value %d (max possible value %d) for type %q (element #%d) at offset %d", jumpToOffset, d.total-32, param.TypeName, i, d.offset)
+			}
+
+			d.offset = jumpToOffset
 		}
 
 		value, err := d.Read(param.TypeName)
 		if err != nil {
-			return nil, fmt.Errorf("unable to decode type %q at offset %d: %w", param.TypeName, d.offset, err)
+			return nil, fmt.Errorf("read type %q (element #%d) at offset %d: %w", param.TypeName, i, d.offset, err)
 		}
 
 		if isOffset {
