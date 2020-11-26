@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"math/big"
+	"regexp"
 
 	"github.com/dfuse-io/eth-go"
 )
@@ -33,7 +34,11 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 		return nil, fmt.Errorf("unable to retrieve symbol for token %q: %w", tokenAddr, err)
 	}
 
-	if decimalsResult == "0x" && nameResult == "0x" && symbolResult == "0x" {
+	emptyDecimal := isEmptyResult(decimalsResult)
+	emptyName := isEmptyResult(nameResult)
+	emptySymbol := isEmptyResult(symbolResult)
+
+	if emptyDecimal && emptyName && emptySymbol {
 		return nil, fmt.Errorf("not implementing one of ERC20 contract's method 'name()', or 'symbol()' or 'decimals()'")
 	}
 
@@ -41,7 +46,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	var symbol interface{} = ""
 	var name interface{} = ""
 
-	if decimalsResult != "0x" {
+	if !emptyDecimal {
 		out, err := decimalsMethodDef.DecodeOutput(eth.MustNewHex(decimalsResult))
 		if err != nil {
 			return nil, fmt.Errorf("decode decimals %q: %w", decimalsResult, err)
@@ -50,22 +55,22 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 		decimals = out[0]
 	}
 
-	if symbolResult != "0x" {
-		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(symbolResult))
-		if err != nil {
-			return nil, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
-		}
-
-		symbol = out[0]
-	}
-
-	if nameResult != "0x" {
+	if !emptyName {
 		out, err := nameMethodDef.DecodeOutput(eth.MustNewHex(nameResult))
 		if err != nil {
 			return nil, fmt.Errorf("decode name %q: %w", nameResult, err)
 		}
 
 		name = out[0]
+	}
+
+	if !emptySymbol {
+		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(symbolResult))
+		if err != nil {
+			return nil, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
+		}
+
+		symbol = out[0]
 	}
 
 	return &eth.Token{
@@ -84,4 +89,10 @@ func methodSignatureBytes(def *eth.MethodDef) []byte {
 	}
 
 	return encoder.Buffer()
+}
+
+var isEmptyRegex = regexp.MustCompile("^0x0*$")
+
+func isEmptyResult(result string) bool {
+	return isEmptyRegex.MatchString(result)
 }
