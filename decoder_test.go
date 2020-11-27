@@ -263,7 +263,7 @@ func TestDecoder_ReadMethodCall(t *testing.T) {
 				000000000000000000000000000000000000000000000000000000000000FFFF
 				0000000000000000000000000000000000000000000000000000000000000000
 			`,
-			expectedErr: errors.New(`read: invalid offset value 69 (max possible value 68) for type "string" (element #0) at offset 36`),
+			expectedErr: errors.New(`read parameters: invalid offset value 69 (max possible value 68) for type "string" (element #0) at offset 36`),
 		},
 		{
 			name:  "entry(uint256,uint256,bool,address,address,bytes)",

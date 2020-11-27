@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -218,15 +219,24 @@ func (c *Client) doRequest(body *bytes.Buffer) (string, error) {
 		zlog.Debug("json_rpc call response", zap.String("response_body", string(bodyBytes)))
 	}
 
-	error := gjson.GetBytes(bodyBytes, "error").String()
-	if error != "" {
+	rpcErrorResult := gjson.GetBytes(bodyBytes, "error")
+	if rpcErrorResult.Exists() {
+		content := rpcErrorResult.Raw
 		if traceEnabled {
 			zlog.Error("json_rpc call response error",
 				zap.String("response_body", string(bodyBytes)),
-				zap.String("error", error),
+				zap.String("error", content),
 			)
 		}
-		return "", fmt.Errorf("json_rpc returned error: %s", error)
+
+		rpcErr := &ErrResponse{}
+		err := json.Unmarshal([]byte(content), rpcErr)
+		if err != nil {
+			// We were not able to deserialize to RPC error, too bad, return it as a standard Go error
+			return "", fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
+		}
+
+		return "", rpcErr
 	}
 
 	result := gjson.GetBytes(bodyBytes, "result").String()

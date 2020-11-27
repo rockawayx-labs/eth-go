@@ -13,6 +13,16 @@ import (
 	"github.com/test-go/testify/require"
 )
 
+func TestRPC_ErrorHandling(t *testing.T) {
+	server, closer := mockJSONRPC(t, json.RawMessage(`{"id":"0x1","error":{"code":-32000,"message":"invalid error"}`))
+	defer closer()
+
+	client := NewClient(server.URL)
+	_, err := client.Call(CallParams{To: eth.MustNewAddress("0x2")})
+
+	assert.Equal(t, &ErrResponse{Code: -32000, Message: "invalid error"}, err)
+}
+
 func TestRPC_Call(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -136,8 +146,13 @@ func mockJSONRPC(t *testing.T, response interface{}) (mock *mockJSONRPCServer, c
 			mock.body, err = ioutil.ReadAll(req.Body)
 			require.NoError(t, err)
 
-			responseBody, err := MarshalJSONRPC(response)
-			require.NoError(t, err)
+			var responseBody []byte
+			if v, ok := response.(json.RawMessage); ok {
+				responseBody = v
+			} else {
+				responseBody, err = MarshalJSONRPC(response)
+				require.NoError(t, err)
+			}
 
 			rw.Write(responseBody)
 		})),
