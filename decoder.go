@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"go.uber.org/zap"
 )
@@ -233,7 +234,8 @@ func (d *Decoder) readString() (out string, err error) {
 	if err != nil {
 		return out, err
 	}
-	out = string(data)
+
+	out = strings.ToValidUTF8(string(data), "�")
 	d.offset += remaining
 
 	return
