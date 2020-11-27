@@ -58,7 +58,7 @@ func (d *Decoder) ReadMethodCall() (*MethodCall, error) {
 	// Method offset of 4 since all offset jump must take into accounts the first 4 bytes of the input
 	parameters, err := d.readParameters(methodDef.Parameters, 4)
 	if err != nil {
-		return nil, fmt.Errorf("read: %w", err)
+		return nil, fmt.Errorf("read parameters: %w", err)
 	}
 
 	return methodDef.NewCall(parameters...), nil
@@ -85,7 +85,7 @@ func (d *Decoder) readParameters(parameters []*MethodParameter, methodOffset uin
 
 			// The minus 32 is to ensure that offset hits a location where at least 32 bytes can be read
 			if jumpToOffset > d.total-32 {
-				return nil, fmt.Errorf("invalid offset value %d (max possible value %d) for type %q (element #%d) at offset %d", jumpToOffset, d.total-32, param.TypeName, i, d.offset)
+				return nil, NewErrDecoding("invalid offset value %d (max possible value %d) for type %q (element #%d) at offset %d", jumpToOffset, d.total-32, param.TypeName, i, d.offset)
 			}
 
 			d.offset = jumpToOffset
@@ -114,7 +114,7 @@ func (d *Decoder) Read(typeName string) (interface{}, error) {
 
 	length, err := d.read("uint256")
 	if err != nil {
-		return nil, fmt.Errorf("cannot write slice %s size: %w", typeName, err)
+		return nil, fmt.Errorf("cannot read slice %s size: %w", typeName, err)
 	}
 
 	size := length.(*big.Int).Uint64()
@@ -127,7 +127,7 @@ func (d *Decoder) Read(typeName string) (interface{}, error) {
 	for i := uint64(0); i < size; i++ {
 		out, err := d.read(resolvedTypeName)
 		if err != nil {
-			return nil, fmt.Errorf("cannot write item from slice %s.%d: %w", typeName, i, err)
+			return nil, fmt.Errorf("cannot read item from slice %s.%d: %w", typeName, i, err)
 		}
 		arr.At(i, out)
 	}
@@ -198,7 +198,7 @@ func (d *Decoder) read(typeName string) (out interface{}, err error) {
 		return d.readBytes()
 	}
 
-	return nil, fmt.Errorf("type %q is not handled right now", typeName)
+	return nil, NewErrDecoding("type %q is not handled right now", typeName)
 }
 
 func (d *Decoder) readMethod() (out string, err error) {
@@ -206,10 +206,10 @@ func (d *Decoder) readMethod() (out string, err error) {
 	if err != nil {
 		return out, err
 	}
-	idx := hex.EncodeToString(data)
-	out, ok := KnownSignatures[idx]
+	signatureID := hex.EncodeToString(data)
+	out, ok := KnownSignatures[signatureID]
 	if !ok {
-		return "", fmt.Errorf("method signature not found for %s", idx)
+		return "", NewErrDecoding("method signature not found for %s", signatureID)
 	}
 	return out, nil
 }
@@ -290,7 +290,7 @@ func (d *Decoder) readBuffer(byteCount uint64) ([]byte, error) {
 	}
 
 	if d.total-d.offset < byteCount {
-		return nil, fmt.Errorf("not enough bytes to read %d bytes, only %d remaining", byteCount, d.total-d.offset)
+		return nil, NewErrDecoding("not enough bytes to read %d bytes, only %d remaining", byteCount, d.total-d.offset)
 	}
 
 	out := d.buffer[d.offset : d.offset+byteCount]
@@ -326,7 +326,8 @@ func newArray(typeName string, count uint64) (decodedArray, error) {
 	case "string":
 		return StringArray(make([]string, count)), nil
 	}
-	return nil, fmt.Errorf("type %q is not handled right now", typeName)
+
+	return nil, NewErrDecoding("array of type %q is not handled right now", typeName)
 }
 
 type BoolArray []bool

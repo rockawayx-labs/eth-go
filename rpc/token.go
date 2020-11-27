@@ -39,7 +39,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	emptySymbol := isEmptyResult(symbolResult)
 
 	if emptyDecimal && emptyName && emptySymbol {
-		return nil, fmt.Errorf("not implementing one of ERC20 contract's method 'name()', or 'symbol()' or 'decimals()'")
+		return nil, &ErrNoERC20Methods{}
 	}
 
 	var decimals interface{} = b0
