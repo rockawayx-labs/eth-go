@@ -91,6 +91,7 @@ func (p *PrivateKey) ToECDSA() *ecdsa.PrivateKey {
 }
 
 func (p *PrivateKey) MarshalJSON() ([]byte, error) {
+	// The `p.String()` is guaranteed to returns only hex characters, so it's safe to wrap directly with `"` symbols
 	return []byte(`"` + p.String() + `"`), nil
 }
 
