@@ -46,7 +46,7 @@ func (d *Decoder) SetBytes(input []byte) *Decoder {
 }
 
 func (d *Decoder) ReadMethodCall() (*MethodCall, error) {
-	methodSignature, err := d.readMethod()
+	methodSignature, err := d.ReadMethod()
 	if err != nil {
 		return nil, err
 	}
@@ -138,72 +138,72 @@ func (d *Decoder) Read(typeName string) (interface{}, error) {
 func (d *Decoder) read(typeName string) (out interface{}, err error) {
 	switch typeName {
 	case "bool":
-		return d.readBool()
+		return d.ReadBool()
 	case "uint8":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return uint8(v), nil
 	case "uint16":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return uint16(v), nil
 	case "uint24":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return uint32(v), nil
 	case "uint32":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return uint32(v), nil
 	case "uint40":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return v, nil
 	case "uint48":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return v, nil
 	case "uint56":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return v, nil
 	case "uint64":
-		v, err := d.readUint64()
+		v, err := d.ReadUint64()
 		if err != nil {
 			return nil, err
 		}
 		return v, nil
 	case "uint72", "uint80", "uint88", "uint96", "uint104", "uint112", "uint120", "uint128", "uint136", "uint144", "uint152", "uint160", "uint168", "uint176", "uint184", "uint192", "uint200", "uint208", "uint216", "uint224", "uint232", "uint240", "uint248", "uint256":
-		return d.readBigInt()
+		return d.ReadBigInt()
 	case "method":
-		return d.readMethod()
+		return d.ReadMethod()
 	case "address":
-		return d.readAddress()
+		return d.ReadAddress()
 	case "string":
-		return d.readString()
+		return d.ReadString()
 	case "bytes":
-		return d.readBytes()
+		return d.ReadBytes()
 	}
 
 	return nil, NewErrDecoding("type %q is not handled right now", typeName)
 }
 
-func (d *Decoder) readMethod() (out string, err error) {
-	data, err := d.readBuffer(4)
+func (d *Decoder) ReadMethod() (out string, err error) {
+	data, err := d.ReadBuffer(4)
 	if err != nil {
 		return out, err
 	}
@@ -215,22 +215,22 @@ func (d *Decoder) readMethod() (out string, err error) {
 	return out, nil
 }
 
-func (d *Decoder) readBool() (out bool, err error) {
-	data, err := d.readBuffer(32)
+func (d *Decoder) ReadBool() (out bool, err error) {
+	data, err := d.ReadBuffer(32)
 	if err != nil {
 		return out, err
 	}
 	return (data[31] == byte(0x01)), nil
 }
 
-func (d *Decoder) readString() (out string, err error) {
-	size, err := d.readBigInt()
+func (d *Decoder) ReadString() (out string, err error) {
+	size, err := d.ReadBigInt()
 	if err != nil {
 		return out, err
 	}
 
 	remaining := 32 - (size.Uint64() % 32)
-	data, err := d.readBuffer(size.Uint64())
+	data, err := d.ReadBuffer(size.Uint64())
 	if err != nil {
 		return out, err
 	}
@@ -241,13 +241,13 @@ func (d *Decoder) readString() (out string, err error) {
 	return
 }
 
-func (d *Decoder) readBytes() ([]byte, error) {
-	size, err := d.readBigInt()
+func (d *Decoder) ReadBytes() ([]byte, error) {
+	size, err := d.ReadBigInt()
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := d.readBuffer(size.Uint64())
+	data, err := d.ReadBuffer(size.Uint64())
 	if err != nil {
 		return nil, err
 	}
@@ -255,8 +255,8 @@ func (d *Decoder) readBytes() ([]byte, error) {
 	return data, nil
 }
 
-func (d *Decoder) readAddress() (out Address, err error) {
-	data, err := d.readBuffer(32)
+func (d *Decoder) ReadAddress() (out Address, err error) {
+	data, err := d.ReadBuffer(32)
 	if err != nil {
 		return out, err
 	}
@@ -269,16 +269,16 @@ func (d *Decoder) readAddress() (out Address, err error) {
 	return address, nil
 }
 
-func (d *Decoder) readUint64() (out uint64, err error) {
-	data, err := d.readBuffer(32)
+func (d *Decoder) ReadUint64() (out uint64, err error) {
+	data, err := d.ReadBuffer(32)
 	if err != nil {
 		return out, err
 	}
 	return binary.BigEndian.Uint64(data[24:]), nil
 }
 
-func (d *Decoder) readBigInt() (out *big.Int, err error) {
-	data, err := d.readBuffer(32)
+func (d *Decoder) ReadBigInt() (out *big.Int, err error) {
+	data, err := d.ReadBuffer(32)
 	if err != nil {
 		return out, err
 	}
@@ -286,7 +286,7 @@ func (d *Decoder) readBigInt() (out *big.Int, err error) {
 	return new(big.Int).SetBytes(data[:]), nil
 }
 
-func (d *Decoder) readBuffer(byteCount uint64) ([]byte, error) {
+func (d *Decoder) ReadBuffer(byteCount uint64) ([]byte, error) {
 	if traceEnabled {
 		zlog.Debug("trying to read bytes", zap.Uint64("byte_count", byteCount), zap.Uint64("remaining", d.total-d.offset))
 	}
