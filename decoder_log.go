@@ -3,13 +3,12 @@ package eth
 import (
 	"fmt"
 	"io"
-
 )
 
 type LogDecoder struct {
 	logEvent     *Log
 	topicDecoder *Decoder
-	dataDecoder  *Decoder
+	DataDecoder  *Decoder
 
 	topicIndex int
 }
@@ -21,7 +20,7 @@ func NewLogDecoder(logEvent *Log) *LogDecoder {
 	}
 
 	if len(logEvent.Data) > 0 {
-		decoder.dataDecoder = NewDecoder(logEvent.Data)
+		decoder.DataDecoder = NewDecoder(logEvent.Data)
 	}
 
 	return decoder
@@ -48,5 +47,5 @@ func (d *LogDecoder) ReadTypedTopic(typeName string) (out interface{}, err error
 }
 
 func (d *LogDecoder) ReadData(typeName string) (out interface{}, err error) {
-	return d.dataDecoder.Read(typeName)
+	return d.DataDecoder.Read(typeName)
 }
