@@ -11,10 +11,12 @@ import (
 var decimalsMethodDef = eth.MustNewMethodDef("decimals() (uint256)")
 var nameMethodDef = eth.MustNewMethodDef("name() (string)")
 var symbolMethodDef = eth.MustNewMethodDef("symbol() (string)")
+var totalSupplyMethodDef = eth.MustNewMethodDef("totalSupply() (uint256)")
 
 var decimalsCallData = decimalsMethodDef.NewCall().MustEncode()
 var nameCallData = nameMethodDef.NewCall().MustEncode()
 var symbolCallData = symbolMethodDef.NewCall().MustEncode()
+var totalSupplyCallData = totalSupplyMethodDef.NewCall().MustEncode()
 
 var b0 = new(big.Int)
 
@@ -34,9 +36,15 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 		return nil, fmt.Errorf("unable to retrieve symbol for token %q: %w", tokenAddr, err)
 	}
 
+	totalSupplyResult, err := c.Call(CallParams{To: tokenAddr, Data: totalSupplyCallData})
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve total supply for token %q: %w", tokenAddr, err)
+	}
+
 	emptyDecimal := isEmptyResult(decimalsResult)
 	emptyName := isEmptyResult(nameResult)
 	emptySymbol := isEmptyResult(symbolResult)
+	emptyTotalSupply := isEmptyResult(totalSupplyResult)
 
 	if emptyDecimal && emptyName && emptySymbol {
 		return nil, &ErrNoERC20Methods{}
@@ -45,6 +53,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	var decimals interface{} = b0
 	var symbol interface{} = ""
 	var name interface{} = ""
+	var totalSupply interface{} = b0
 
 	if !emptyDecimal {
 		out, err := decimalsMethodDef.DecodeOutput(eth.MustNewHex(decimalsResult))
@@ -73,11 +82,21 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 		symbol = out[0]
 	}
 
+	if !emptyTotalSupply {
+		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(totalSupplyResult))
+		if err != nil {
+			return nil, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
+		}
+
+		symbol = out[0]
+	}
+
 	return &eth.Token{
-		Address:  tokenAddr,
-		Name:     name.(string),
-		Symbol:   symbol.(string),
-		Decimals: uint(decimals.(*big.Int).Uint64()),
+		Address:     tokenAddr,
+		Name:        name.(string),
+		Symbol:      symbol.(string),
+		Decimals:    uint(decimals.(*big.Int).Uint64()),
+		TotalSupply: totalSupply,
 	}, nil
 }
 

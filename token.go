@@ -15,10 +15,11 @@ var ETHToken = &Token{
 }
 
 type Token struct {
-	Name     string  `json:"name"`
-	Symbol   string  `json:"symbol"`
-	Address  Address `json:"address"`
-	Decimals uint    `json:"decimals"`
+	Name        string  `json:"name"`
+	Symbol      string  `json:"symbol"`
+	Address     Address `json:"address"`
+	Decimals    uint    `json:"decimals"`
+	TotalSupply uint    `json:"total_supply"`
 }
 
 func (t *Token) ID() uint64 {
