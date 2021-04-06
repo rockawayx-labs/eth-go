@@ -5,28 +5,45 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dfuse-io/eth-go"
+	"github.com/tidwall/gjson"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/dfuse-io/eth-go"
-	"github.com/tidwall/gjson"
-	"go.uber.org/zap"
 )
 
 var ErrFalseResp = errors.New("false response")
+
+type Option func(*Client)
 
 // TODO: refactor to use mux rpc
 type Client struct {
 	URL     string
 	chainID *big.Int
+
+	httpClient *http.Client
 }
 
-func NewClient(url string) *Client {
-	return &Client{
+func NewClient(url string, opts ...Option) *Client {
+	c := &Client{
 		URL: url,
+	}
+
+	c.httpClient = http.DefaultClient
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
+}
+
+func WithHttpClient(httpClient *http.Client) Option {
+	return func(client *Client) {
+		client.httpClient = httpClient
 	}
 }
 
@@ -201,7 +218,7 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 }
 
 func (c *Client) doRequest(body *bytes.Buffer) (string, error) {
-	resp, err := http.Post(c.URL, "application/json", body)
+	resp, err := c.httpClient.Post(c.URL, "application/json", body)
 	if err != nil {
 		return "", fmt.Errorf("sending request to json_rpc endpoint: %w", err)
 	}
@@ -241,5 +258,4 @@ func (c *Client) doRequest(body *bytes.Buffer) (string, error) {
 
 	result := gjson.GetBytes(bodyBytes, "result").String()
 	return result, nil
-
 }
