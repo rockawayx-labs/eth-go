@@ -96,7 +96,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 		Name:        name.(string),
 		Symbol:      symbol.(string),
 		Decimals:    uint(decimals.(*big.Int).Uint64()),
-		TotalSupply: uint(totalSupply.(*big.Int).Uint64()),
+		TotalSupply: totalSupply.(*big.Int),
 	}, nil
 }
 
