@@ -88,7 +88,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 			return nil, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
 		}
 
-		symbol = out[0]
+		totalSupply = out[0]
 	}
 
 	return &eth.Token{
