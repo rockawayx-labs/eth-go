@@ -83,7 +83,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	}
 
 	if !emptyTotalSupply {
-		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(totalSupplyResult))
+		out, err := totalSupplyMethodDef.DecodeOutput(eth.MustNewHex(totalSupplyResult))
 		if err != nil {
 			return nil, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
 		}
