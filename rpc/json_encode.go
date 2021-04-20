@@ -605,20 +605,30 @@ func boolEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 }
 
 func intEncoder(e *encodeState, v reflect.Value, _ encOpts) {
-	b := bytes.TrimPrefix(strconv.AppendInt(e.scratch[:0], v.Int(), 16), prefixZeroCharacter)
 	e.WriteByte('"')
-	e.WriteString("0x")
-	e.Write(b)
+	if v.IsZero() {
+		e.WriteString("0x0")
+	} else {
+		e.WriteString("0x")
+
+		b := bytes.TrimPrefix(strconv.AppendInt(e.scratch[:0], v.Int(), 16), prefixZeroCharacter)
+		e.Write(b)
+	}
 	e.WriteByte('"')
 }
 
 var prefixZeroCharacter = []byte{'0'}
 
 func uintEncoder(e *encodeState, v reflect.Value, _ encOpts) {
-	b := bytes.TrimPrefix(strconv.AppendUint(e.scratch[:0], v.Uint(), 16), prefixZeroCharacter)
 	e.WriteByte('"')
-	e.WriteString("0x")
-	e.Write(b)
+	if v.IsZero() {
+		e.WriteString("0x0")
+	} else {
+		e.WriteString("0x")
+
+		b := bytes.TrimPrefix(strconv.AppendUint(e.scratch[:0], v.Uint(), 16), prefixZeroCharacter)
+		e.Write(b)
+	}
 	e.WriteByte('"')
 }
 
@@ -633,12 +643,12 @@ func bigIntEncoder(e *encodeState, v reflect.Value, _ encOpts) {
 		in = ptrToBigInt.Interface().(*big.Int)
 	}
 
-	e.WriteByte('"')
-	e.WriteString("0x")
 	if in == nil || in.Sign() == 0 {
-		e.WriteByte('"')
+		e.WriteString(`"0x0"`)
 		return
 	}
+
+	e.WriteString(`"0x`)
 
 	// Fast path, number fit in scratch space
 	if in.IsUint64() {
