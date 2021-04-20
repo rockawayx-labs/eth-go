@@ -8,6 +8,11 @@
 //
 // See "JSON and Go" for an introduction to this package:
 // https://golang.org/doc/articles/json_and_go.html
+//
+// Use https://github.com/golang/go/commits/master/src/encoding/json to track
+// changes made upstream to `encoding/json/encode.go` file.
+//
+// Sync up to commit 04edf418d285df410745118aae756f9e0a9a00f5 (see https://github.com/golang/go/blob/04edf418d285df410745118aae756f9e0a9a00f5/src/encoding/json/encode.go)
 package rpc
 
 import (
@@ -235,6 +240,8 @@ func (e *UnsupportedTypeError) Error() string {
 	return "json: unsupported type: " + e.Type.String()
 }
 
+// An UnsupportedValueError is returned by Marshal when attempting
+// to encode an unsupported value.
 type UnsupportedValueError struct {
 	Value reflect.Value
 	Str   string
@@ -749,7 +756,7 @@ func stringEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 func isValidNumber(s string) bool {
 	// This function implements the JSON numbers grammar.
 	// See https://tools.ietf.org/html/rfc7159#section-6
-	// and https://json.org/number.gif
+	// and https://www.json.org/img/number.png
 
 	if s == "" {
 		return false
@@ -878,6 +885,16 @@ func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 		e.WriteString("null")
 		return
 	}
+	if e.ptrLevel++; e.ptrLevel > startDetectingCyclesAfter {
+		// We're a large number of nested ptrEncoder.encode calls deep;
+		// start checking if we've run into a pointer cycle.
+		ptr := v.Pointer()
+		if _, ok := e.ptrSeen[ptr]; ok {
+			e.error(&UnsupportedValueError{v, fmt.Sprintf("encountered a cycle via %s", v.Type())})
+		}
+		e.ptrSeen[ptr] = struct{}{}
+		defer delete(e.ptrSeen, ptr)
+	}
 	e.WriteByte('{')
 
 	// Extract and sort the keys.
@@ -900,6 +917,7 @@ func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 		me.elemEnc(e, v.MapIndex(kv.v), opts)
 	}
 	e.WriteByte('}')
+	e.ptrLevel--
 }
 
 func newMapEncoder(t reflect.Type) encoderFunc {
@@ -959,7 +977,23 @@ func (se sliceEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 		e.WriteString("null")
 		return
 	}
+	if e.ptrLevel++; e.ptrLevel > startDetectingCyclesAfter {
+		// We're a large number of nested ptrEncoder.encode calls deep;
+		// start checking if we've run into a pointer cycle.
+		// Here we use a struct to memorize the pointer to the first element of the slice
+		// and its length.
+		ptr := struct {
+			ptr uintptr
+			len int
+		}{v.Pointer(), v.Len()}
+		if _, ok := e.ptrSeen[ptr]; ok {
+			e.error(&UnsupportedValueError{v, fmt.Sprintf("encountered a cycle via %s", v.Type())})
+		}
+		e.ptrSeen[ptr] = struct{}{}
+		defer delete(e.ptrSeen, ptr)
+	}
 	se.arrayEnc(e, v, opts)
+	e.ptrLevel--
 }
 
 func newSliceEncoder(t reflect.Type) encoderFunc {
@@ -1048,7 +1082,7 @@ func isValidTag(s string) bool {
 	}
 	for _, c := range s {
 		switch {
-		case strings.ContainsRune("!#$%&()*+-./:<=>?@[]^_{|}~ ", c):
+		case strings.ContainsRune("!#$%&()*+-./:;<=>?@[]^_{|}~ ", c):
 			// Backslash and quote chars are reserved, but
 			// otherwise any punctuation chars are allowed
 			// in a tag name.
