@@ -46,10 +46,6 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	emptySymbol := isEmptyResult(symbolResult)
 	emptyTotalSupply := isEmptyResult(totalSupplyResult)
 
-	if emptyDecimal && emptyName && emptySymbol {
-		return nil, &ErrNoERC20Methods{}
-	}
-
 	var decimals interface{} = b0
 	var symbol interface{} = ""
 	var name interface{} = ""
@@ -92,11 +88,15 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	}
 
 	return &eth.Token{
-		Address:     tokenAddr,
-		Name:        name.(string),
-		Symbol:      symbol.(string),
-		Decimals:    uint(decimals.(*big.Int).Uint64()),
-		TotalSupply: totalSupply.(*big.Int),
+		Address:            tokenAddr,
+		Name:               name.(string),
+		Symbol:             symbol.(string),
+		Decimals:           uint(decimals.(*big.Int).Uint64()),
+		TotalSupply:        totalSupply.(*big.Int),
+		IsEmptyName:        emptyName,
+		IsEmptyDecimal:     emptyDecimal,
+		IsEmptySymbol:      emptySymbol,
+		IsEmptyTotalSupply: emptyTotalSupply,
 	}, nil
 }
 

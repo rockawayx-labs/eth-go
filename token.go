@@ -15,11 +15,15 @@ var ETHToken = &Token{
 }
 
 type Token struct {
-	Name        string  `json:"name"`
-	Symbol      string  `json:"symbol"`
-	Address     Address `json:"address"`
-	Decimals    uint    `json:"decimals"`
-	TotalSupply *big.Int    `json:"total_supply"`
+	Name               string   `json:"name"`
+	Symbol             string   `json:"symbol"`
+	Address            Address  `json:"address"`
+	Decimals           uint     `json:"decimals"`
+	TotalSupply        *big.Int `json:"total_supply"`
+	IsEmptyName        bool     `json:"-"`
+	IsEmptyDecimal     bool     `json:"-"`
+	IsEmptySymbol      bool     `json:"-"`
+	IsEmptyTotalSupply bool     `json:"-"`
 }
 
 func (t *Token) ID() uint64 {
