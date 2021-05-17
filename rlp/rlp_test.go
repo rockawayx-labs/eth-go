@@ -1,12 +1,10 @@
 package rlp
 
 import (
-	"hash"
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
+	"github.com/test-go/testify/require"
 )
 
 type testCase struct {
@@ -125,6 +123,23 @@ func TestEncoding(t *testing.T) {
 		trial(t, tests)
 	})
 
+	t.Run("Integers", func(t *testing.T) {
+		var tests = []testCase{
+			{
+				[]uint64{23, 30400},
+				[]byte{0xc4, 0x17, 0x82, 0x76, 0xc0},
+				[][]byte{{23}, {0x76, 0xc0}},
+			},
+			{
+				[]*big.Int{big.NewInt(23), big.NewInt(30400)},
+				[]byte{0xc4, 0x17, 0x82, 0x76, 0xc0},
+				[][]byte{{23}, {0x76, 0xc0}},
+			},
+		}
+
+		trial(t, tests)
+	})
+
 	t.Run("Struct", func(t *testing.T) {
 		var tests = []testCase{
 			{
@@ -163,7 +178,7 @@ func trial(t *testing.T, tests []testCase) {
 	}
 }
 
-type RawTx struct {
+type pretendTx struct {
 	Nonce    uint64 `json:"nonce"`
 	GasPrice uint64 `json:"gasPrice"`
 	Gas      uint64 `json:"gas"`
@@ -192,7 +207,7 @@ func TestEthTransaction(t *testing.T) {
 	//	uint(0),   // R
 	//	uint(0),   // S
 	//}
-	input := &RawTx{
+	input := &pretendTx{
 		uint64(6),              // Nonce
 		uint64(10000000000000), // GasPrice
 		uint64(196608),         // Gas
@@ -209,7 +224,7 @@ func TestEthTransaction(t *testing.T) {
 	exp := []byte{230, 6, 134, 9, 24, 78, 114, 160, 0, 131, 3, 0, 0, 148, 250, 60, 170, 188, 142, 239, 236, 43, 94, 40, 149, 229, 175, 191, 121, 55, 158, 114, 104, 167, 128, 128, 1, 1, 1}
 	require.Equal(t, exp, data)
 
-	tx := new(RawTx)
+	tx := new(pretendTx)
 	err = Decode(data, tx)
 	require.NoError(t, err)
 
@@ -240,14 +255,15 @@ func TestBigInts(t *testing.T) {
 }
 
 // Order matters for serialisation
-type EthRawTx struct {
-	Sequence uint64   `json:"nonce"`
-	GasPrice uint64   `json:"gasPrice"`
-	GasLimit uint64   `json:"gasLimit"`
-	To       []byte   `json:"to"`
-	Amount   *big.Int `json:"value"`
-	Data     []byte   `json:"data"`
-	ChainID  *big.Int `json:"chainID"`
+type TestRawTx struct {
+	Sequence                uint64 `json:"nonce"`
+	GasPrice                uint64 `json:"gasPrice"`
+	GasLimit                uint64 `json:"gasLimit"`
+	dontSerialiseUnexported uint64
+	To                      []byte   `json:"to"`
+	Amount                  *big.Int `json:"value"`
+	Data                    []byte   `json:"data"`
+	ChainID                 *big.Int `json:"chainID"`
 
 	V *big.Int
 	R *big.Int
@@ -259,15 +275,16 @@ func TestEthRawTx(t *testing.T) {
 	require.True(t, ok)
 
 	to := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+	chainID := new(big.Int).SetBytes([]byte("flgoo"))
 
-	rawTx := &EthRawTx{
+	rawTx := &TestRawTx{
 		Sequence: 1,
 		GasPrice: 1,
 		GasLimit: 1,
 		To:       to[:],
 		Amount:   big.NewInt(232),
 		Data:     []byte{1, 3, 4},
-		ChainID:  getEthChainID("flgoo"),
+		ChainID:  chainID,
 		V:        big.NewInt(272),
 		R:        bigly,
 		S:        bigly,
@@ -276,28 +293,14 @@ func TestEthRawTx(t *testing.T) {
 	bs, err := Encode(rawTx)
 	require.NoError(t, err)
 
-	rawTxOut := new(EthRawTx)
+	rawTxOut := new(TestRawTx)
 	err = Decode(bs, rawTxOut)
 	require.NoError(t, err)
 
 	require.Equal(t, rawTx, rawTxOut)
 }
 
-func getEthChainID(chainID string) *big.Int {
-	return new(big.Int).SetBytes(keccak256([]byte(chainID)))
-}
-
-type keccakState interface {
-	hash.Hash
-	Read([]byte) (int, error)
-}
-
-func keccak256(data ...[]byte) []byte {
-	b := make([]byte, 32)
-	d := sha3.NewLegacyKeccak256().(keccakState)
-	for _, b := range data {
-		d.Write(b)
-	}
-	d.Read(b)
-	return b
+func TestEncodeLength(t *testing.T) {
+	// Ensure we have the minimal encoding (no leading zeros)
+	require.Equal(t, []byte{0xb8, 0xff}, encodeLength(0xff, StringOffset))
 }
