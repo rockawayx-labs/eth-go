@@ -14,6 +14,7 @@ import (
 	"github.com/test-go/testify/require"
 )
 
+var b1 = big.NewInt(1)
 var b1e18, _ = new(big.Int).SetString("1000000000000000000", 0)
 var b20e9, _ = new(big.Int).SetString("20000000000", 0)
 
@@ -24,10 +25,10 @@ type trx struct {
 	to       []byte
 	value    *big.Int
 	input    []byte
-	chainID  uint64
+	chainID  *big.Int
 }
 
-func TestSigner_Hash(t *testing.T) {
+func TestSigner_Signature(t *testing.T) {
 	tests := []struct {
 		name        string
 		in          trx
@@ -39,7 +40,7 @@ func TestSigner_Hash(t *testing.T) {
 	}{
 		{
 			"parity even",
-			trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, 1},
+			trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, b1},
 			"4646464646464646464646464646464646464646464646464646464646464646",
 			"37",
 			"18515461264373351373200002665853028612451056578545711640558177340181847433846",
@@ -49,7 +50,7 @@ func TestSigner_Hash(t *testing.T) {
 
 		{
 			"parity odd",
-			trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, 1},
+			trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, b1},
 			"5141949acb9d2c7f5667c25428d61d290ced0d721eeb026c291da8018c0e8f50",
 			"38",
 			"23672060004711451020640132671354144284260356544239847582982888380471096525220",
@@ -66,7 +67,7 @@ func TestSigner_Hash(t *testing.T) {
 			signer, err := NewPrivateKeySigner(zlog, test.in.chainID, priv)
 			require.NoError(t, err)
 
-			v, r, s, err := signer.Sign(test.in.nonce, test.in.to, test.in.value, test.in.gasLimit, test.in.gasPrice, test.in.input)
+			v, r, s, err := signer.Signature(test.in.nonce, test.in.to, test.in.value, test.in.gasLimit, test.in.gasPrice, test.in.input)
 
 			if test.expectedErr == nil {
 				require.NoError(t, err)
@@ -80,14 +81,59 @@ func TestSigner_Hash(t *testing.T) {
 	}
 }
 
+func TestSigner_Sign(t *testing.T) {
+	tests := []struct {
+		name        string
+		in          trx
+		privateKey  string
+		expected    string
+		expectedErr error
+	}{
+		{
+			"parity even",
+			trx{0, bigString(t, "0x3b9aca00"), 21000, eth.MustNewAddress("0x17A98d2b11Dfb784e63337d2170e21cf5DD04631"), bigString(t, "0x16345785d8a0000"), nil, b1},
+			"616e6769652e6a6a706572657a616775696e6167612e6574682e6c696e6b0d0a",
+			"f86b80843b9aca008252089417a98d2b11dfb784e63337d2170e21cf5dd0463188016345785d8a00008025a02e47aa4c37e7003af4d3b7d20265691b6c03baba509c0556d21acaca82876cb4a01b5711b8c801584c7875370ed2e9b60260b390cdb63cf57fa6d77899102279a0",
+			nil,
+		},
+
+		// {
+		// 	"parity odd",
+		// 	trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, b1},
+		// 	"5141949acb9d2c7f5667c25428d61d290ced0d721eeb026c291da8018c0e8f50",
+		// 	"38",
+		// 	nil,
+		// },
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			priv, err := eth.NewPrivateKey(test.privateKey)
+			require.NoError(t, err)
+
+			signer, err := NewPrivateKeySigner(zlog, test.in.chainID, priv)
+			require.NoError(t, err)
+
+			actual, err := signer.Sign(test.in.nonce, test.in.to, test.in.value, test.in.gasLimit, test.in.gasPrice, test.in.input)
+
+			if test.expectedErr == nil {
+				require.NoError(t, err)
+				assert.Equal(t, test.expected, hex.EncodeToString(actual))
+			} else {
+				assert.Equal(t, test.expectedErr, err)
+			}
+		})
+	}
+}
+
 func TestSigner_ParityOdd(t *testing.T) {
-	t.Skip("Used to generate a signature with parity being odd")
+	t.Skip("Used to generate a signature with parity bit being odd")
 
 	for {
 		privKey, err := eth.NewRandomPrivateKey()
 		require.NoError(t, err)
 
-		rawTx := trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, 1}
+		rawTx := trx{9, b20e9, 21000, eth.MustNewAddress("0x3535353535353535353535353535353535353535"), b1e18, nil, b1}
 
 		data, err := rlp.Encode([]interface{}{
 			rawTx.nonce,
@@ -96,7 +142,7 @@ func TestSigner_ParityOdd(t *testing.T) {
 			rawTx.to,
 			rawTx.value,
 			rawTx.input,
-			big.NewInt(int64(rawTx.chainID)),
+			rawTx.chainID,
 			uint64(0),
 			uint64(0),
 		})

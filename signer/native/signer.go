@@ -24,18 +24,54 @@ type PrivateKeySigner struct {
 	logger         *zap.Logger
 }
 
-func NewPrivateKeySigner(logger *zap.Logger, chainID uint64, privateKey *eth.PrivateKey) (*PrivateKeySigner, error) {
-	bigChainID := big.NewInt(int64(chainID))
-
+func NewPrivateKeySigner(logger *zap.Logger, chainID *big.Int, privateKey *eth.PrivateKey) (*PrivateKeySigner, error) {
 	return &PrivateKeySigner{
-		chainID:        bigChainID,
-		chainIDDoubled: new(big.Int).Mul(bigChainID, b2),
+		chainID:        chainID,
+		chainIDDoubled: new(big.Int).Mul(chainID, b2),
 		privateKey:     privateKey,
 		logger:         logger,
 	}, nil
 }
 
-func (p *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (v, r, s *big.Int, err error) {
+func (p *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (signedEncodedTrx []byte, err error) {
+	v, r, s, err := p.Signature(nonce, to, value, gasLimit, gasPrice, trxData)
+	if err != nil {
+		return nil, err
+	}
+
+	data, _ := rlp.Encode([]interface{}{
+		nonce,
+		gasPrice,
+		gasLimit,
+		to,
+		value,
+		trxData,
+	})
+	fmt.Println("Generic", hex.EncodeToString(data))
+
+	// FIXME: Inefficent, the Signature process already had to encode nonce, gasPrice, gasLimit, to, value and trxData.
+	//        We need to "pop" chainID, 0, 0 and replaced those by v, r, s values instead. Just trying to encode the generic
+	//        then append the specific part does not work, prefixes change when doing and encoding does not work. So we need
+	//        some kind of state. Maybe tweaking a bit the RLP encoding scheme could work here.
+	data, err = rlp.Encode([]interface{}{
+		nonce,
+		gasPrice,
+		gasLimit,
+		to,
+		value,
+		trxData,
+		v,
+		r,
+		s,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("rlp signed encode: %w", err)
+	}
+
+	return data, nil
+}
+
+func (p *PrivateKeySigner) Signature(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (v, r, s *big.Int, err error) {
 	p.logger.Debug("signing transaction",
 		zap.Uint64("nonce", nonce),
 		zap.Stringer("to", eth.Address(to)),
@@ -87,6 +123,5 @@ func (p *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimi
 	// Then we apply the v = ChainID * 2 + {35, 36} math
 	v = new(big.Int).Add(p.chainIDDoubled, recoveryFixedID)
 
-	fmt.Printf("Native (%s, %s, %s, %s)\n", v.String(), r.String(), s.String(), hex.EncodeToString(compressedSignature))
 	return v, r, s, nil
 }
