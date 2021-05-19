@@ -15,7 +15,6 @@
 package native
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -53,21 +52,17 @@ func (p *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimi
 		return nil, err
 	}
 
-	data, _ := rlp.Encode([]interface{}{
-		nonce,
-		gasPrice,
-		gasLimit,
-		to,
-		value,
-		trxData,
-	})
-	fmt.Println("Generic", hex.EncodeToString(data))
+	p.logger.Debug("signed transaction signature",
+		zap.Stringer("v", v),
+		zap.Stringer("r", r),
+		zap.Stringer("s", s),
+	)
 
 	// FIXME: Inefficent, the Signature process already had to encode nonce, gasPrice, gasLimit, to, value and trxData.
 	//        We need to "pop" chainID, 0, 0 and replaced those by v, r, s values instead. Just trying to encode the generic
 	//        then append the specific part does not work, prefixes change when doing and encoding does not work. So we need
 	//        some kind of state. Maybe tweaking a bit the RLP encoding scheme could work here.
-	data, err = rlp.Encode([]interface{}{
+	data, err := rlp.Encode([]interface{}{
 		nonce,
 		gasPrice,
 		gasLimit,
