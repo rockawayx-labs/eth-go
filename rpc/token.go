@@ -124,7 +124,7 @@ func methodSignatureBytes(def *eth.MethodDef) []byte {
 	return encoder.Buffer()
 }
 
-var isEmptyRegex = regexp.MustCompile("^0x0*$")
+var isEmptyRegex = regexp.MustCompile("^0x$")
 
 func isEmptyResult(result string) bool {
 	return isEmptyRegex.MatchString(result)

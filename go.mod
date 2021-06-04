@@ -1,9 +1,10 @@
 module github.com/dfuse-io/eth-go
 
-go 1.14
+go 1.15
 
 require (
 	github.com/btcsuite/btcd v0.21.0-beta
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dfuse-io/logging v0.0.0-20201110202154-26697de88c79
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
