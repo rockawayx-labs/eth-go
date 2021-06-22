@@ -9,7 +9,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/test-go/testify v1.1.4
 	github.com/tidwall/gjson v1.6.1
 	go.opencensus.io v0.22.2 // indirect

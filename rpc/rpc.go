@@ -19,14 +19,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dfuse-io/eth-go"
-	"github.com/tidwall/gjson"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/dfuse-io/eth-go"
+	"github.com/tidwall/gjson"
+	"go.uber.org/zap"
 )
 
 var ErrFalseResp = errors.New("false response")
@@ -205,15 +206,50 @@ func (c *Client) GasPrice() (*big.Int, error) {
 	return i, nil
 }
 
-type rpcRequest struct {
+type RPCRequest struct {
 	Params  []interface{} `json:"params"`
 	JSONRPC string        `json:"jsonrpc"`
 	Method  string        `json:"method"`
 	ID      int           `json:"id"`
 }
 
+type RPCResult struct {
+	content string
+	err     error
+}
+
+func (c *Client) DoRequests(reqs []RPCRequest) ([]RPCResult, error) {
+	// sanitize reqs
+	var lastID int
+	for _, req := range reqs {
+		if req.ID == 0 {
+			lastID++
+			req.ID = lastID
+		}
+		if req.JSONRPC == "" {
+			req.JSONRPC = "2.0"
+		}
+	}
+
+	reqsBytes, err := MarshalJSONRPC(&reqs)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal json_rpc requests: %w", err)
+	}
+
+	if traceEnabled {
+		zlog.Debug("json_rpc requests", zap.String("requests", string(reqsBytes)))
+	}
+
+	resp, err := c.doRequest(bytes.NewBuffer(reqsBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	return parseRPCResults(resp)
+}
+
 func (c *Client) DoRequest(method string, params []interface{}) (string, error) {
-	req := rpcRequest{
+	req := RPCRequest{
 		Params:  params,
 		JSONRPC: "2.0",
 		Method:  method,
@@ -228,34 +264,60 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 		zlog.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
-	return c.doRequest(bytes.NewBuffer(reqCnt))
+	resp, err := c.doRequest(bytes.NewBuffer(reqCnt))
+	if err != nil {
+		return "", err
+	}
+
+	results, err := parseRPCResults(resp)
+	if err != nil {
+		return "", err
+	}
+	return results[0].content, results[0].err
 }
 
-func (c *Client) doRequest(body *bytes.Buffer) (string, error) {
+func (c *Client) doRequest(body *bytes.Buffer) ([]byte, error) {
 	resp, err := c.httpClient.Post(c.URL, "application/json", body)
 	if err != nil {
-		return "", fmt.Errorf("sending request to json_rpc endpoint: %w", err)
+		return nil, fmt.Errorf("sending request to json_rpc endpoint: %w", err)
 	}
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("error in response: %d", resp.StatusCode)
+		return nil, fmt.Errorf("error in response: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("unable to read json_rpc response body: %w", err)
+		return nil, fmt.Errorf("unable to read json_rpc response body: %w", err)
 	}
 
 	if traceEnabled {
 		zlog.Debug("json_rpc call response", zap.String("response_body", string(bodyBytes)))
 	}
+	return bodyBytes, nil
+}
 
-	rpcErrorResult := gjson.GetBytes(bodyBytes, "error")
-	if rpcErrorResult.Exists() {
+func parseRPCResults(in []byte) ([]RPCResult, error) {
+	responses := []gjson.Result{}
+	parsed := gjson.ParseBytes(in)
+	if parsed.IsArray() {
+		responses = parsed.Array()
+	} else {
+		responses = append(responses, parsed)
+	}
+
+	var out []RPCResult
+	for _, response := range responses {
+		rpcErrorResult := response.Get("error")
+		if !rpcErrorResult.Exists() {
+			out = append(out, RPCResult{content: response.Get("result").String()})
+			continue
+		}
+
 		content := rpcErrorResult.Raw
 		if traceEnabled {
 			zlog.Error("json_rpc call response error",
-				zap.String("response_body", string(bodyBytes)),
+				zap.String("response_body", string(in)),
 				zap.String("error", content),
 			)
 		}
@@ -263,13 +325,11 @@ func (c *Client) doRequest(body *bytes.Buffer) (string, error) {
 		rpcErr := &ErrResponse{}
 		err := json.Unmarshal([]byte(content), rpcErr)
 		if err != nil {
-			// We were not able to deserialize to RPC error, too bad, return it as a standard Go error
-			return "", fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
+			// We were not able to deserialize to RPC error, return the whole thing with an error
+			return nil, fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
 		}
 
-		return "", rpcErr
+		out = append(out, RPCResult{err: rpcErr})
 	}
-
-	result := gjson.GetBytes(bodyBytes, "result").String()
-	return result, nil
+	return out, nil
 }
