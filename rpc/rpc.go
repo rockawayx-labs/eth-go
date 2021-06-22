@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -207,28 +208,27 @@ func (c *Client) GasPrice() (*big.Int, error) {
 }
 
 type RPCRequest struct {
-	Params  []interface{} `json:"params"`
-	JSONRPC string        `json:"jsonrpc"`
-	Method  string        `json:"method"`
-	ID      int           `json:"id"`
+	Params []interface{} `json:"params"`
+	Method string        `json:"method"`
+
+	JSONRPC string `json:"jsonrpc"`
+	ID      int    `json:"id"`
 }
 
 type RPCResult struct {
 	content string
+	ID      int
 	err     error
 }
 
-func (c *Client) DoRequests(reqs []RPCRequest) ([]RPCResult, error) {
+func (c *Client) DoRequests(reqs []*RPCRequest) ([]RPCResult, error) {
 	// sanitize reqs
 	var lastID int
+	// we need IDs to be sorted
 	for _, req := range reqs {
-		if req.ID == 0 {
-			lastID++
-			req.ID = lastID
-		}
-		if req.JSONRPC == "" {
-			req.JSONRPC = "2.0"
-		}
+		lastID++
+		req.ID = lastID
+		req.JSONRPC = "2.0"
 	}
 
 	reqsBytes, err := MarshalJSONRPC(&reqs)
@@ -245,7 +245,14 @@ func (c *Client) DoRequests(reqs []RPCRequest) ([]RPCResult, error) {
 		return nil, err
 	}
 
-	return parseRPCResults(resp)
+	results, err := parseRPCResults(resp)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) != len(reqs) {
+		panic("should never receive less results than requests on successful call")
+	}
+	return results, nil
 }
 
 func (c *Client) DoRequest(method string, params []interface{}) (string, error) {
@@ -273,6 +280,9 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	if len(results) != 1 {
+		panic("should never receive less results than requests on successful call")
+	}
 	return results[0].content, results[0].err
 }
 
@@ -297,8 +307,16 @@ func (c *Client) doRequest(body *bytes.Buffer) ([]byte, error) {
 	return bodyBytes, nil
 }
 
+func hex2uint64(hexStr string) uint64 {
+	cleaned := strings.Replace(hexStr, "0x", "", -1)
+	result, _ := strconv.ParseUint(cleaned, 16, 64)
+	return result
+}
+
 func parseRPCResults(in []byte) ([]RPCResult, error) {
 	responses := []gjson.Result{}
+
+	// we may receive `[{resp1},{resp2}]` OR `{resp}`
 	parsed := gjson.ParseBytes(in)
 	if parsed.IsArray() {
 		responses = parsed.Array()
@@ -310,7 +328,7 @@ func parseRPCResults(in []byte) ([]RPCResult, error) {
 	for _, response := range responses {
 		rpcErrorResult := response.Get("error")
 		if !rpcErrorResult.Exists() {
-			out = append(out, RPCResult{content: response.Get("result").String()})
+			out = append(out, RPCResult{content: response.Get("result").String(), ID: int(hex2uint64(response.Get("id").String()))})
 			continue
 		}
 
@@ -329,7 +347,12 @@ func parseRPCResults(in []byte) ([]RPCResult, error) {
 			return nil, fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
 		}
 
-		out = append(out, RPCResult{err: rpcErr})
+		out = append(out, RPCResult{err: rpcErr, ID: int(hex2uint64(response.Get("id").String()))})
 	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].ID < out[j].ID
+	})
+
 	return out, nil
 }

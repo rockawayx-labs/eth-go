@@ -34,26 +34,46 @@ var totalSupplyCallData = totalSupplyMethodDef.NewCall().MustEncode()
 
 var b0 = new(big.Int)
 
-func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
-	decimalsResult, err := c.Call(CallParams{To: tokenAddr, Data: decimalsCallData})
+func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBlockNum uint64, err error) {
+
+	results, err := c.DoRequests([]*RPCRequest{
+		{
+			Params: []interface{}{},
+			Method: "eth_blockNumber",
+		},
+		{
+			Params: []interface{}{CallParams{To: tokenAddr, Data: decimalsCallData}, "latest"},
+			Method: "eth_call",
+		},
+		{
+			Params: []interface{}{CallParams{To: tokenAddr, Data: nameCallData}, "latest"},
+			Method: "eth_call",
+		},
+		{
+			Params: []interface{}{CallParams{To: tokenAddr, Data: symbolCallData}, "latest"},
+			Method: "eth_call",
+		},
+		{
+			Params: []interface{}{CallParams{To: tokenAddr, Data: totalSupplyCallData}, "latest"},
+			Method: "eth_call",
+		},
+	},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve decimals for token %q: %w", tokenAddr, err)
+		return nil, 0, err
 	}
 
-	nameResult, err := c.Call(CallParams{To: tokenAddr, Data: nameCallData})
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve name for token %q: %w", tokenAddr, err)
+	for _, result := range results {
+		if result.err != nil {
+			return nil, 0, result.err
+		}
 	}
 
-	symbolResult, err := c.Call(CallParams{To: tokenAddr, Data: symbolCallData})
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve symbol for token %q: %w", tokenAddr, err)
-	}
-
-	totalSupplyResult, err := c.Call(CallParams{To: tokenAddr, Data: totalSupplyCallData})
-	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve total supply for token %q: %w", tokenAddr, err)
-	}
+	headBlockNum = hex2uint64(results[0].content)
+	decimalsResult := results[1].content
+	nameResult := results[2].content
+	symbolResult := results[3].content
+	totalSupplyResult := results[4].content
 
 	emptyDecimal := isEmptyResult(decimalsResult)
 	emptyName := isEmptyResult(nameResult)
@@ -68,7 +88,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	if !emptyDecimal {
 		out, err := decimalsMethodDef.DecodeOutput(eth.MustNewHex(decimalsResult))
 		if err != nil {
-			return nil, fmt.Errorf("decode decimals %q: %w", decimalsResult, err)
+			return nil, headBlockNum, fmt.Errorf("decode decimals %q: %w", decimalsResult, err)
 		}
 
 		decimals = out[0]
@@ -77,7 +97,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	if !emptyName {
 		out, err := nameMethodDef.DecodeOutput(eth.MustNewHex(nameResult))
 		if err != nil {
-			return nil, fmt.Errorf("decode name %q: %w", nameResult, err)
+			return nil, headBlockNum, fmt.Errorf("decode name %q: %w", nameResult, err)
 		}
 
 		name = out[0]
@@ -86,7 +106,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	if !emptySymbol {
 		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(symbolResult))
 		if err != nil {
-			return nil, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
+			return nil, headBlockNum, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
 		}
 
 		symbol = out[0]
@@ -95,7 +115,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 	if !emptyTotalSupply {
 		out, err := totalSupplyMethodDef.DecodeOutput(eth.MustNewHex(totalSupplyResult))
 		if err != nil {
-			return nil, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
+			return nil, headBlockNum, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
 		}
 
 		totalSupply = out[0]
@@ -111,7 +131,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (*eth.Token, error) {
 		IsEmptyDecimal:     emptyDecimal,
 		IsEmptySymbol:      emptySymbol,
 		IsEmptyTotalSupply: emptyTotalSupply,
-	}, nil
+	}, headBlockNum, nil
 }
 
 func methodSignatureBytes(def *eth.MethodDef) []byte {
