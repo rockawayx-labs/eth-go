@@ -250,7 +250,8 @@ func (c *Client) DoRequests(reqs []*RPCRequest) ([]RPCResult, error) {
 		return nil, err
 	}
 	if len(results) != len(reqs) {
-		panic("should never receive less results than requests on successful call")
+		zlog.Warn("invalid number of results", zap.Int("len_results", len(results)), zap.Int("len_reqs", len(reqs)))
+		return nil, fmt.Errorf("invalid number of results")
 	}
 	return results, nil
 }
