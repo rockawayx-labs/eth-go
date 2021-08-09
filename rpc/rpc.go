@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dfuse-io/eth-go"
+	"github.com/streamingfast/eth-go"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )

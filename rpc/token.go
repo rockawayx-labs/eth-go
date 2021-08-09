@@ -19,7 +19,7 @@ import (
 	"math/big"
 	"regexp"
 
-	"github.com/dfuse-io/eth-go"
+	"github.com/streamingfast/eth-go"
 )
 
 var decimalsMethodDef = eth.MustNewMethodDef("decimals() (uint256)")

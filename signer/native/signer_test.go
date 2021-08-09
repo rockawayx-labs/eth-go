@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/dfuse-io/eth-go"
-	"github.com/dfuse-io/eth-go/rlp"
+	"github.com/streamingfast/eth-go"
+	"github.com/streamingfast/eth-go/rlp"
 	"github.com/test-go/testify/assert"
 	"github.com/test-go/testify/require"
 )

@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/dfuse-io/eth-go"
+	"github.com/streamingfast/eth-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/test-go/testify/require"
 )

@@ -22,5 +22,5 @@ import (
 var zlog = zap.NewNop()
 
 func setupLogger() {
-	logging.Register("github.com/dfuse-io/eth-go/signer/native", &zlog)
+	logging.Register("github.com/streamingfast/eth-go/signer/native", &zlog)
 }

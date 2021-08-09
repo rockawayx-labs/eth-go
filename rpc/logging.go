@@ -19,9 +19,9 @@ import (
 	"go.uber.org/zap"
 )
 
-var traceEnabled = logging.IsTraceEnabled("eth-go", "github.com/dfuse-io/eth-go/rpc")
+var traceEnabled = logging.IsTraceEnabled("eth-go", "github.com/streamingfast/eth-go/rpc")
 var zlog = zap.NewNop()
 
 func init() {
-	logging.Register("github.com/dfuse-io/eth-go/rpc", &zlog)
+	logging.Register("github.com/streamingfast/eth-go/rpc", &zlog)
 }

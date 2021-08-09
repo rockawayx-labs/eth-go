@@ -19,8 +19,8 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/dfuse-io/eth-go"
-	"github.com/dfuse-io/eth-go/rlp"
+	"github.com/streamingfast/eth-go"
+	"github.com/streamingfast/eth-go/rlp"
 	"go.uber.org/zap"
 )
 
