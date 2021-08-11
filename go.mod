@@ -4,10 +4,10 @@ go 1.15
 
 require (
 	github.com/btcsuite/btcd v0.21.0-beta
-	github.com/dfuse-io/logging v0.0.0-20201110202154-26697de88c79
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/streamingfast/logging v0.0.0-20210811175431-f3b44b61606a // indirect
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/test-go/testify v1.1.4
 	github.com/tidwall/gjson v1.6.1

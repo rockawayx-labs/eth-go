@@ -19,7 +19,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/dfuse-io/logging"
+	"github.com/streamingfast/logging"
 	"github.com/stretchr/testify/require"
 )
 
