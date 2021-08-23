@@ -7,10 +7,10 @@ require (
 	github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/streamingfast/logging v0.0.0-20210811175431-f3b44b61606a // indirect
+	github.com/streamingfast/logging v0.0.0-20210811175431-f3b44b61606a
 	github.com/stretchr/testify v1.7.1-0.20210427113832-6241f9ab9942
 	github.com/test-go/testify v1.1.4
-	github.com/tidwall/gjson v1.6.1
+	github.com/tidwall/gjson v1.6.5
 	go.opencensus.io v0.22.2 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
