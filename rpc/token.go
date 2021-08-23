@@ -34,46 +34,67 @@ var totalSupplyCallData = totalSupplyMethodDef.NewCall().MustEncode()
 
 var b0 = new(big.Int)
 
-func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBlockNum uint64, err error) {
+// GetTokenInfo returns an *eth.Token object if it can.
+// It can be called at a specific block number (with an archive node), or "latest" if atBlockNum is 0
+// It can validate that a specific block hash exists that chain by setting it as ensureBlockHashIsInChain != "".
+func (c *Client) GetTokenInfo(tokenAddr eth.Address, atBlockNum uint64) (token *eth.Token, err error) {
 
-	results, err := c.DoRequests([]*RPCRequest{
+	var atExpression interface{}
+	if atBlockNum == 0 {
+		atExpression = "latest"
+	} else {
+		atExpression = atBlockNum
+	}
+
+	requests := []*RPCRequest{
 		{
-			Params: []interface{}{},
-			Method: "eth_blockNumber",
-		},
-		{
-			Params: []interface{}{CallParams{To: tokenAddr, Data: decimalsCallData}, "latest"},
+			Params: []interface{}{CallParams{To: tokenAddr, Data: decimalsCallData}, atExpression},
 			Method: "eth_call",
 		},
 		{
-			Params: []interface{}{CallParams{To: tokenAddr, Data: nameCallData}, "latest"},
+			Params: []interface{}{CallParams{To: tokenAddr, Data: nameCallData}, atExpression},
 			Method: "eth_call",
 		},
 		{
-			Params: []interface{}{CallParams{To: tokenAddr, Data: symbolCallData}, "latest"},
+			Params: []interface{}{CallParams{To: tokenAddr, Data: symbolCallData}, atExpression},
 			Method: "eth_call",
 		},
 		{
-			Params: []interface{}{CallParams{To: tokenAddr, Data: totalSupplyCallData}, "latest"},
+			Params: []interface{}{CallParams{To: tokenAddr, Data: totalSupplyCallData}, atExpression},
 			Method: "eth_call",
 		},
-	},
-	)
+	}
+
+	//  possible way to check if we are in the same "fork"
+	//	if ensureBlockHashIsInChain != "" {
+	//		requests = append(requests, &RPCRequest{
+	//			Method: "eth_getUncleCountByBlockHash",
+	//			Params: []interface{}{ensureBlockHashIsInChain}},
+	//		)
+	//	}
+
+	results, err := c.DoRequests(requests)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	for _, result := range results {
 		if result.err != nil {
-			return nil, 0, result.err
+			return nil, result.err
 		}
 	}
 
-	headBlockNum = hex2uint64(results[0].content)
-	decimalsResult := results[1].content
-	nameResult := results[2].content
-	symbolResult := results[3].content
-	totalSupplyResult := results[4].content
+	//  possible way to check if we are in the same "fork"
+	//	if ensureBlockHashIsInChain != "" {
+	//		if results[len(results)-1].content == "" {
+	//			return nil, fmt.Errorf("blockHash %s requested for lookup but not found on chain", ensureBlockHashIsInChain)
+	//		}
+	//	}
+
+	decimalsResult := results[0].content
+	nameResult := results[1].content
+	symbolResult := results[2].content
+	totalSupplyResult := results[3].content
 
 	emptyDecimal := isEmptyResult(decimalsResult)
 	emptyName := isEmptyResult(nameResult)
@@ -88,7 +109,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBloc
 	if !emptyDecimal {
 		out, err := decimalsMethodDef.DecodeOutput(eth.MustNewHex(decimalsResult))
 		if err != nil {
-			return nil, headBlockNum, fmt.Errorf("decode decimals %q: %w", decimalsResult, err)
+			return nil, fmt.Errorf("decode decimals %q: %w", decimalsResult, err)
 		}
 
 		decimals = out[0]
@@ -97,7 +118,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBloc
 	if !emptyName {
 		out, err := nameMethodDef.DecodeOutput(eth.MustNewHex(nameResult))
 		if err != nil {
-			return nil, headBlockNum, fmt.Errorf("decode name %q: %w", nameResult, err)
+			return nil, fmt.Errorf("decode name %q: %w", nameResult, err)
 		}
 
 		name = out[0]
@@ -106,7 +127,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBloc
 	if !emptySymbol {
 		out, err := symbolMethodDef.DecodeOutput(eth.MustNewHex(symbolResult))
 		if err != nil {
-			return nil, headBlockNum, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
+			return nil, fmt.Errorf("decode symbol %q: %w", symbolResult, err)
 		}
 
 		symbol = out[0]
@@ -115,7 +136,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBloc
 	if !emptyTotalSupply {
 		out, err := totalSupplyMethodDef.DecodeOutput(eth.MustNewHex(totalSupplyResult))
 		if err != nil {
-			return nil, headBlockNum, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
+			return nil, fmt.Errorf("decode total supply %q: %w", totalSupplyResult, err)
 		}
 
 		totalSupply = out[0]
@@ -131,7 +152,7 @@ func (c *Client) GetTokenInfo(tokenAddr eth.Address) (token *eth.Token, headBloc
 		IsEmptyDecimal:     emptyDecimal,
 		IsEmptySymbol:      emptySymbol,
 		IsEmptyTotalSupply: emptyTotalSupply,
-	}, headBlockNum, nil
+	}, nil
 }
 
 func methodSignatureBytes(def *eth.MethodDef) []byte {

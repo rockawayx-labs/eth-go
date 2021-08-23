@@ -10,23 +10,21 @@ import (
 )
 
 func TestGetTokenInfo(t *testing.T) {
-	t.Skip()
+	t.Skip() //requires a full archive node at localhost:8545 on eth-mainnet
 	client := NewClient("http://localhost:8545")
-	addr := eth.MustNewAddress("0xd1c24bcabab5f01bcba2b44b6097ba506be67d6d")
-	token, headBlockNum, err := client.GetTokenInfo(addr)
-	assert.Greater(t, headBlockNum, uint64(8000000))
+	addr := eth.MustNewAddress("0xdac17f958d2ee523a2206206994597c13d831ec7")
+
+	token, err := client.GetTokenInfo(addr, 5000000)
 	require.NoError(t, err)
 	assert.Equal(t, &eth.Token{
-		Name:               "Dogelon Mars",
-		Symbol:             "ELON",
-		Address:            addr,
-		TotalSupply:        big.NewInt(1000000000000000),
-		Decimals:           0,
-		IsEmptyName:        false, //		IsEmptyDecimal:     false, //		IsEmptySymbol:      false,
-		IsEmptyTotalSupply: false,
+		Name:        "Tether USD",
+		Symbol:      "USDT",
+		Address:     addr,
+		TotalSupply: big.NewInt(60109970000000),
+		Decimals:    6,
 	}, token)
-
 }
+
 func TestGetAtBlockNum(t *testing.T) {
 	t.Skip()
 	client := NewClient("http://localhost:8545")
