@@ -208,20 +208,90 @@ func (c *Client) GasPrice() (*big.Int, error) {
 }
 
 type RPCRequest struct {
-	Params []interface{} `json:"params"`
-	Method string        `json:"method"`
+	Params  []interface{} `json:"params"`
+	Method  string        `json:"method"`
+	decoder ResponseDecoder
 
 	JSONRPC string `json:"jsonrpc"`
 	ID      int    `json:"id"`
 }
 
-type RPCResult struct {
-	content string
+type RPCResponse struct {
+	Content string
 	ID      int
-	err     error
+	Err     error
+	decoder ResponseDecoder
 }
 
-func (c *Client) DoRequests(reqs []*RPCRequest) ([]RPCResult, error) {
+func (res *RPCResponse) Empty() bool {
+	return res.Content == "0x"
+}
+
+func (res *RPCResponse) Deterministic() bool {
+	if res.Err == nil {
+		return true
+	}
+	if rpcErr, ok := res.Err.(*ErrResponse); ok {
+		return IsDeterministicError(rpcErr)
+	}
+	return false
+}
+
+func (res *RPCResponse) Decode() ([]interface{}, error) {
+	if res.decoder == nil {
+		return nil, fmt.Errorf("no decoder in RPC response")
+	}
+	if res.Err != nil {
+		return nil, fmt.Errorf("error in response, cannot decode")
+	}
+	if res.Empty() {
+		return nil, fmt.Errorf("empty response, cannot decode")
+	}
+	return res.decoder(eth.MustNewHex(res.Content))
+}
+
+type ETHCallOption func(*ETHCall)
+
+func AtBlockNum(num uint64) ETHCallOption {
+	return func(c *ETHCall) {
+		c.atExpr = num
+	}
+}
+
+func NewETHCall(to eth.Address, methodDef *eth.MethodDef, options ...ETHCallOption) *ETHCall {
+	c := &ETHCall{
+		params: CallParams{
+			To:   to,
+			Data: methodDef.NewCall().MustEncode(),
+		},
+		methodDef:       methodDef,
+		responseDecoder: methodDef.DecodeOutput,
+		atExpr:          "latest",
+	}
+	for _, opt := range options {
+		opt(c)
+	}
+	return c
+}
+
+type ETHCall struct {
+	params          CallParams
+	methodDef       *eth.MethodDef
+	atExpr          interface{}
+	responseDecoder ResponseDecoder
+}
+
+func (c *ETHCall) ToRequest() *RPCRequest {
+	return &RPCRequest{
+		Params:  []interface{}{c.params, c.atExpr},
+		decoder: c.responseDecoder,
+		Method:  "eth_call",
+	}
+}
+
+type ResponseDecoder func([]byte) ([]interface{}, error)
+
+func (c *Client) DoRequests(reqs []*RPCRequest) ([]*RPCResponse, error) {
 	// sanitize reqs
 	var lastID int
 	// we need IDs to be sorted
@@ -253,6 +323,10 @@ func (c *Client) DoRequests(reqs []*RPCRequest) ([]RPCResult, error) {
 		zlog.Warn("invalid number of results", zap.Int("len_results", len(results)), zap.Int("len_reqs", len(reqs)))
 		return nil, fmt.Errorf("invalid number of results")
 	}
+	for i, req := range reqs {
+		results[i].decoder = req.decoder
+	}
+
 	return results, nil
 }
 
@@ -282,9 +356,9 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 		return "", err
 	}
 	if len(results) != 1 {
-		panic("should never receive less results than requests on successful call")
+		return "", fmt.Errorf("received no result than number of requests")
 	}
-	return results[0].content, results[0].err
+	return results[0].Content, results[0].Err
 }
 
 func (c *Client) doRequest(body *bytes.Buffer) ([]byte, error) {
@@ -314,7 +388,7 @@ func hex2uint64(hexStr string) uint64 {
 	return result
 }
 
-func parseRPCResults(in []byte) ([]RPCResult, error) {
+func parseRPCResults(in []byte) ([]*RPCResponse, error) {
 	responses := []gjson.Result{}
 
 	// we may receive `[{resp1},{resp2}]` OR `{resp}`
@@ -325,11 +399,11 @@ func parseRPCResults(in []byte) ([]RPCResult, error) {
 		responses = append(responses, parsed)
 	}
 
-	var out []RPCResult
+	var out []*RPCResponse
 	for _, response := range responses {
 		rpcErrorResult := response.Get("error")
 		if !rpcErrorResult.Exists() {
-			out = append(out, RPCResult{content: response.Get("result").String(), ID: int(hex2uint64(response.Get("id").String()))})
+			out = append(out, &RPCResponse{Content: response.Get("result").String(), ID: int(hex2uint64(response.Get("id").String()))})
 			continue
 		}
 
@@ -348,7 +422,7 @@ func parseRPCResults(in []byte) ([]RPCResult, error) {
 			return nil, fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
 		}
 
-		out = append(out, RPCResult{err: rpcErr, ID: int(hex2uint64(response.Get("id").String()))})
+		out = append(out, &RPCResponse{Err: rpcErr, ID: int(hex2uint64(response.Get("id").String()))})
 	}
 
 	sort.Slice(out, func(i, j int) bool {
