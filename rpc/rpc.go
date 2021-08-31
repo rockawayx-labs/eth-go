@@ -223,6 +223,10 @@ type RPCResponse struct {
 	decoder ResponseDecoder
 }
 
+func (res *RPCResponse) CopyDecoder(req *RPCRequest) {
+	res.decoder = req.decoder
+}
+
 func (res *RPCResponse) Empty() bool {
 	return res.Content == "0x"
 }
