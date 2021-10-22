@@ -92,7 +92,7 @@ func (f *MethodDef) NewCall(args ...interface{}) *MethodCall {
 	return call
 }
 
-func (f *MethodDef) methodID() []byte {
+func (f *MethodDef) MethodID() []byte {
 	return Keccak256([]byte(f.Signature()))[0:4]
 }
 

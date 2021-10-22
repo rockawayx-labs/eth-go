@@ -51,7 +51,7 @@ func convertJsonToASTNode(abi *ABI, node map[string]interface{}) *ABI {
 		if err != nil {
 			//zlog.Warn("error creating function", zap.Error(err))
 		} else {
-			abi.MethodsMap[string(f.methodID())] = f
+			abi.MethodsMap[string(f.MethodID())] = f
 
 		}
 	default:
