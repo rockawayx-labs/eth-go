@@ -111,7 +111,7 @@ func (f *MethodDef) String() string {
 		args = append(args, fmt.Sprintf("%s %s", parameter.TypeName, parameter.Name))
 	}
 
-	return fmt.Sprintf("%s(%s)", f.Name, strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", f.Name, strings.Join(args, ","))
 }
 
 func (f *MethodDef) DecodeOutput(data []byte) ([]interface{}, error) {
