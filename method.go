@@ -122,6 +122,19 @@ func (f *MethodDef) DecodeOutput(data []byte) ([]interface{}, error) {
 	return NewDecoder(data).ReadOutput(f.ReturnParameters)
 }
 
+func (f *MethodDef) DecodeOutputFromString(data string) ([]interface{}, error) {
+	if len(f.ReturnParameters) == 0 {
+		return nil, fmt.Errorf("no return parameters defined for method")
+	}
+
+	decoder, err := NewDecoderFromString(data)
+	if err != nil {
+		return nil, fmt.Errorf("data is not a valid hexadecimal value")
+	}
+
+	return decoder.ReadOutput(f.ReturnParameters)
+}
+
 type MethodCall struct {
 	MethodDef *MethodDef
 	Data      []interface{}
