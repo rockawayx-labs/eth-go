@@ -15,6 +15,9 @@
 package eth
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,15 +27,13 @@ import (
 func TestABIContract_Parse(t *testing.T) {
 	tests := []struct {
 		name        string
-		in          string
 		expected    *ABI
 		expectedErr error
 	}{
 		{
 			"log event indexed",
-			`[{"name":"PairCreated","type":"event","inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"}]}]`,
 			&ABI{
-				MethodsMap: map[string]*MethodDef{},
+				FunctionsMap: map[string]*MethodDef{},
 				LogEventsMap: map[string]*LogEventDef{
 					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {
 						Name: "PairCreated",
@@ -44,11 +45,56 @@ func TestABIContract_Parse(t *testing.T) {
 			},
 			nil,
 		},
+
+		{
+			"struct tuple alone",
+			&ABI{
+				FunctionsMap: map[string]*MethodDef{
+					string(b(t, "b961c32d")): {
+						Name: "tupleAlone",
+						Parameters: []*MethodParameter{
+							{Name: "period", TypeName: "tuple", InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
+								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
+								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							}},
+						},
+						StateMutability: StateMutabilityPure,
+					},
+				},
+			},
+			nil,
+		},
+
+		{
+			"struct tuple array",
+			&ABI{
+				FunctionsMap: map[string]*MethodDef{
+					string(b(t, "15eb963d")): {
+						Name: "tupleArray",
+						Parameters: []*MethodParameter{
+							{Name: "periods", TypeName: "tuple[]", InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
+								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
+								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							}},
+						},
+						StateMutability: StateMutabilityView,
+					},
+				},
+			},
+			nil,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			abi, err := parseABIFromBytes([]byte(test.in))
+			abiFile := filepath.Join("testdata", strings.ReplaceAll(test.name, " ", "_")+".abi.json")
+			stat, err := os.Stat(abiFile)
+			require.NoError(t, err, "unable to stat abi file %q (inferred from %s space replaced by _)", abiFile, test.name)
+			require.Equal(t, true, !stat.IsDir(), "abi file %q is a directory (inferred from %s space replaced by _)", abiFile, test.name)
+
+			abi, err := ParseABI(abiFile)
 			if test.expectedErr == nil {
 				require.NoError(t, err)
 				abiEquals(t, test.expected, abi)
@@ -85,17 +131,17 @@ func abiEquals(t *testing.T, expected *ABI, actual *ABI) {
 		require.Equal(t, expected.LogEventsMap, actual.LogEventsMap)
 	} else {
 		for key, value := range expected.LogEventsMap {
-			assert.Contains(t, actual.LogEventsMap, key, "log event id %x", []byte(key))
+			assert.Contains(t, actual.LogEventsMap, key, "log event id %s", key)
 			assert.Equal(t, value, actual.LogEventsMap[key])
 		}
 	}
 
-	if len(expected.MethodsMap) != len(actual.MethodsMap) {
-		require.Equal(t, expected.MethodsMap, actual.MethodsMap)
+	if len(expected.FunctionsMap) != len(actual.FunctionsMap) {
+		require.Equal(t, expected.FunctionsMap, actual.FunctionsMap)
 	} else {
-		for key, value := range expected.MethodsMap {
-			assert.Contains(t, actual.MethodsMap, key, "method id %x", []byte(key))
-			assert.Equal(t, value, actual.MethodsMap[key])
+		for key, value := range expected.FunctionsMap {
+			assert.Contains(t, actual.FunctionsMap, key, "method id %s", key)
+			assert.Equal(t, value, actual.FunctionsMap[key])
 		}
 	}
 }

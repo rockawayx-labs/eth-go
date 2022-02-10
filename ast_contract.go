@@ -29,7 +29,7 @@ func ParseAST(astFilepath string) *ABI {
 	_ = json.Unmarshal([]byte(file), &ast)
 
 	abi := &ABI{
-		MethodsMap: make(map[string]*MethodDef),
+		FunctionsMap: make(map[string]*MethodDef),
 	}
 
 	for _, node := range ast["nodes"].([]interface{}) {
@@ -51,7 +51,7 @@ func convertJsonToASTNode(abi *ABI, node map[string]interface{}) *ABI {
 		if err != nil {
 			//zlog.Warn("error creating function", zap.Error(err))
 		} else {
-			abi.MethodsMap[string(f.MethodID())] = f
+			abi.FunctionsMap[string(f.MethodID())] = f
 
 		}
 	default:

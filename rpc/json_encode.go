@@ -181,6 +181,19 @@ func MarshalJSONRPC(v interface{}) ([]byte, error) {
 	return buf, nil
 }
 
+func MarshalJSONRPCIndent(v interface{}, prefix, indent string) ([]byte, error) {
+	b, err := MarshalJSONRPC(v)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	err = Indent(&buf, b, prefix, indent)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // HTMLEscape appends to dst the JSON-encoded src with <, >, &, U+2028 and U+2029
 // characters inside string literals changed to \u003c, \u003e, \u0026, \u2028, \u2029
 // so that the JSON will be safe to embed inside HTML <script> tags.

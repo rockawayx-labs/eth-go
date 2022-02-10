@@ -16,6 +16,8 @@ package signer
 
 import (
 	"math/big"
+
+	"github.com/streamingfast/eth-go"
 )
 
 // Signer is the interface of all implementation that are able to sign message data according to the various
@@ -27,6 +29,8 @@ type Signer interface {
 	// complete the standard Ethereum transaction signing process by appending r, s to transaction payload and completing the RLP
 	// encoding.
 	Sign(nonce uint64, toAddress []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, transactionData []byte) (signedEncodedTrx []byte, err error)
+
+	SignHash(hash eth.Hash) (signature []byte, err error)
 
 	// Signature generates the right payload for signing, perform the signing operation, extract the signature (v, r, s) and
 	// return them.

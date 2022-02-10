@@ -232,6 +232,8 @@ func TestPrivateKey_ToECDSA(t *testing.T) {
 }
 
 func TestKeccak256(t *testing.T) {
+	hexData := MustNewHex("00000000000000000000000000000000000000000000000000000000000000ab00000000000000000000000000000000000000000000000000000000000000bc000000000000000000000000000000000000000000000000000000000000009f")
+
 	tests := []struct {
 		in        string
 		expectOut string
@@ -251,6 +253,10 @@ func TestKeccak256(t *testing.T) {
 		{
 			in:        "Birth(address,uint256,uint256,uint256,uint256)",
 			expectOut: "0a5311bd2a6608f08a180df2ee7c5946819a649b204b554bb8e39825b2c50ad5",
+		},
+		{
+			in:        string(hexData),
+			expectOut: "29f854483f7f0bbfe56b2e12b8da6cc2caf951abb1777b75bace664018c1085a",
 		},
 	}
 

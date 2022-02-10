@@ -1,0 +1,32 @@
+[
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenID",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint64",
+            "name": "fromBlockNum",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "toBlockNum",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct ClaimPeriod",
+        "name": "period",
+        "type": "tuple"
+      }
+    ],
+    "name": "tupleAlone",
+    "outputs": [],
+    "stateMutability": "pure",
+    "type": "function"
+  }
+]

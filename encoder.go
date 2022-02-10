@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
-
 	"golang.org/x/crypto/sha3"
 )
 
@@ -49,8 +48,12 @@ func (e *Encoder) Buffer() []byte {
 }
 
 func (e *Encoder) WriteMethodCall(method *MethodCall) error {
+	if len(method.Data) != len(method.MethodDef.Parameters) {
+		return fmt.Errorf("method is expecting %d parameters but %d were provided", len(method.MethodDef.Parameters), len(method.Data))
+	}
+
 	methodSignature := method.MethodDef.Signature()
-	err := e.Write("method", methodSignature)
+	err := e.write("method", nil, methodSignature)
 	if err != nil {
 		return fmt.Errorf("unable to write method in buffer: %w", err)
 	}
@@ -62,28 +65,41 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 		)
 	}
 
+	return e.writeParameters(4, method.MethodDef.Parameters, method.Data)
+}
+
+func (e *Encoder) WriteParameters(parameters []*MethodParameter, data []interface{}) error {
+	return e.writeParameters(0, parameters, data)
+}
+
+func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*MethodParameter, data []interface{}) error {
 	type arrayToInsert struct {
 		buffOffset uint64
 		typeName   string
+		components []*StructComponent
 		value      interface{}
 	}
 
 	slicesToInsert := []arrayToInsert{}
-	for idx, param := range method.MethodDef.Parameters {
+	for idx, param := range parameters {
 		if isOffsetType(param.TypeName) {
 			slicesToInsert = append(slicesToInsert, arrayToInsert{
 				buffOffset: uint64(len(e.buffer)),
 				typeName:   param.TypeName,
-				value:      method.Data[idx],
+				components: param.Components,
+				value:      data[idx],
 			})
 
-			if err := e.Write("uint64", uint64(0)); err != nil {
+			if traceEnabled {
+				zlog.Debug("writting placeholder offset in buffer", zap.String("input_type", param.TypeName), zap.Int("input_idx", idx))
+			}
+
+			if err := e.write("uint64", nil, uint64(0)); err != nil {
 				return fmt.Errorf("unable to write slice placeholder: %w", err)
 			}
 
 			if traceEnabled {
 				zlog.Debug("written slice placeholder in buffer",
-					zap.Stringer("buf", buffer(e.buffer)),
 					zap.String("input_type", param.TypeName),
 					zap.Int("input_idx", idx),
 				)
@@ -92,7 +108,7 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 			continue
 		}
 
-		if err := e.Write(param.TypeName, method.Data[idx]); err != nil {
+		if err := e.write(param.TypeName, param.Components, data[idx]); err != nil {
 			return fmt.Errorf("unable to write input.%d %q in buffer: %w", idx, param.TypeName, err)
 		}
 
@@ -106,8 +122,8 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 	}
 
 	for sidx, slc := range slicesToInsert {
-		// offset should not include the signatures' bytes
-		dataLength := uint64(len(e.buffer)) - 4
+		// Offset should not include the signatures' bytes if present, the `methodSelectorOffset` argument represents that
+		dataLength := uint64(len(e.buffer)) - uint64(methodSelectorOffset)
 		d, err := e.encodeUint(dataLength, 64)
 		if err != nil {
 			return fmt.Errorf("unable to encode slice offset: %w", err)
@@ -120,13 +136,12 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 
 		if traceEnabled {
 			zlog.Debug("inserted slice offset in buffer",
-				zap.Stringer("buf", buffer(e.buffer)),
 				zap.String("input_type", slc.typeName),
 				zap.Int("slice_idx", sidx),
 			)
 		}
 
-		err = e.Write(slc.typeName, slc.value)
+		err = e.write(slc.typeName, slc.components, slc.value)
 		if err != nil {
 			return fmt.Errorf("unable to write slice in buffer: %w", err)
 		}
@@ -139,60 +154,89 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 			)
 		}
 	}
+
 	return nil
 }
 
-func (e *Encoder) Write(typeName string, in interface{}) error {
+func (e *Encoder) Write(parameter *MethodParameter, in interface{}) error {
+	return e.write(parameter.TypeName, parameter.Components, in)
+}
+
+func (e *Encoder) write(typeName string, components []*StructComponent, in interface{}) error {
 	var isAnArray bool
 	isAnArray, resolvedTypeName := isArray(typeName)
 	if !isAnArray {
-		return e.write(resolvedTypeName, in)
+		return e.writeElement(resolvedTypeName, components, in)
 	}
 
 	s := reflect.ValueOf(in)
 	switch s.Kind() {
 	case reflect.Slice:
-		// TOFIX: is this assumption good?
-		err := e.write("uint64", uint64(s.Len()))
+		if traceEnabled {
+			zlog.Debug("writing length of array", zap.String("typeName", typeName), zap.Int("length", s.Len()))
+		}
+
+		err := e.writeElement("uint64", nil, uint64(s.Len()))
 		if err != nil {
 			return fmt.Errorf("cannot write slice %s size: %w", typeName, err)
 		}
 
+		if traceEnabled {
+			zlog.Debug("writing elements of array", zap.String("typeName", typeName))
+		}
+
 		for i := 0; i < s.Len(); i++ {
-			err := e.write(resolvedTypeName, s.Index(i).Interface())
+			err := e.writeElement(resolvedTypeName, components, s.Index(i).Interface())
 			if err != nil {
 				return fmt.Errorf("cannot write item from slice %s.%d: %w", typeName, i, err)
 			}
 		}
+
+		if traceEnabled {
+			zlog.Debug("ended writing elements of array", zap.String("typeName", typeName))
+		}
+
 		return nil
 	}
 	return fmt.Errorf("type %q is not handled right now", typeName)
 }
 
-func (e *Encoder) write(typeName string, in interface{}) error {
+func (e *Encoder) writeElement(typeName string, components []*StructComponent, in interface{}) error {
+	if traceEnabled {
+		zlog.Debug("writing element", zap.String("typeName", typeName), zap.Bool("has_components", len(components) > 0))
+	}
+
 	var d []byte
 	var err error
 	switch typeName {
 	case "bool":
 		d, err = e.encodeBool(in.(bool))
 	case "uint8":
-		d, err = e.encodeUint(uint64(in.(uint8)), 8)
+		d, err = e.encodeUintFromInterface(in, 8)
 	case "uint16":
-		d, err = e.encodeUint(uint64(in.(uint16)), 16)
+		d, err = e.encodeUintFromInterface(in, 16)
 	case "uint24":
-		d, err = e.encodeUint(uint64(in.(uint32)), 24)
+		d, err = e.encodeUintFromInterface(in, 24)
 	case "uint32":
-		d, err = e.encodeUint(uint64(in.(uint32)), 32)
+		d, err = e.encodeUintFromInterface(in, 32)
 	case "uint40":
-		d, err = e.encodeUint(in.(uint64), 40)
+		d, err = e.encodeUintFromInterface(in, 40)
 	case "uint48":
-		d, err = e.encodeUint(in.(uint64), 48)
+		d, err = e.encodeUintFromInterface(in, 48)
 	case "uint56":
-		d, err = e.encodeUint(in.(uint64), 56)
+		d, err = e.encodeUintFromInterface(in, 56)
 	case "uint64":
-		d, err = e.encodeUint(in.(uint64), 64)
+		d, err = e.encodeUintFromInterface(in, 64)
 	case "uint72", "uint80", "uint88", "uint96", "uint104", "uint112", "uint120", "uint128", "uint136", "uint144", "uint152", "uint160", "uint168", "uint176", "uint184", "uint192", "uint200", "uint208", "uint216", "uint224", "uint232", "uint240", "uint248", "uint256":
-		d, err = e.encodeBigInt(in.(*big.Int))
+		switch v := in.(type) {
+		case big.Int:
+			d, err = e.encodeBigInt(&v)
+		case *big.Int:
+			d, err = e.encodeBigInt(v)
+		default:
+			err = fmt.Errorf("type %q input should be big.Int or *big.Int, got %T", typeName, v)
+		}
+
 	case "method":
 		d, err = e.encodeMethod(in.(string))
 	case "address":
@@ -200,9 +244,11 @@ func (e *Encoder) write(typeName string, in interface{}) error {
 	case "string":
 		d, err = e.encodeString(in.(string))
 	case "bytes":
-		d, err = e.encodeBytes(in.([]byte))
+		d, err = e.encodeBytesFromInterface(in)
 	case "event":
 		d, err = e.encodeEvent(in.(string))
+	case "tuple":
+		return e.writeTuple("<unknown>", components, in)
 
 	default:
 		return fmt.Errorf("type %q is not handled right now", typeName)
@@ -212,8 +258,154 @@ func (e *Encoder) write(typeName string, in interface{}) error {
 		return err
 	}
 
+	if traceEnabled {
+		zlog.Debug("appending to buffer", zap.String("typeName", typeName), zap.Int("actual_offset", len(e.buffer)), zap.Int("new_offset", len(e.buffer)+len(d)), zap.String("bytes", hex.EncodeToString(d)))
+	}
 	e.buffer = append(e.buffer, d...)
 	return nil
+}
+
+// writeTuple writes a tuple (defined as a `struct` in Solidity code) to the buffer. The components are the
+// ordered definition of fields that form that structure. The `in` is the actual Go type that we should use
+// to resolve the struct components. Here all the future types that we should handle:
+//
+// - Go struct and reflection to resolve the Go fields against the components
+// - `map[string]interface{}`` to resolve the Go fields against the components
+// - `[]interface{}`` to resolve the element against the components
+//
+// **Important** Right now, only []interface{} is supported.
+func (e *Encoder) writeTuple(structName string, components []*StructComponent, in interface{}) error {
+	switch v := in.(type) {
+	case []interface{}:
+		return e.writeTupleFromSlice(structName, components, v)
+
+	case map[string]interface{}:
+		return e.writeTupleFromMap(structName, components, v)
+
+	default:
+		if in != nil {
+			rv := reflect.Indirect(reflect.ValueOf(in))
+			if rv.Kind() == reflect.Struct {
+				return e.writeTupleFromStruct(structName, components, rv)
+			}
+		}
+
+		return fmt.Errorf("invalid input type %T when encoding struct %s, only `[]interface{}` and `map[string]interface{}` are supported", v, structName)
+	}
+}
+
+func (e *Encoder) writeTupleFromSlice(structName string, components []*StructComponent, in []interface{}) error {
+	if len(in) != len(components) {
+		return fmt.Errorf(`input "[]interface{}" value has %d elements, but struct %q has %d fields`, len(in), structName, len(components))
+	}
+
+	for i, fieldIn := range in {
+		if err := e.writeComponent(structName, components[i], fieldIn); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Encoder) writeTupleFromMap(structName string, components []*StructComponent, in map[string]interface{}) error {
+	if len(in) != len(components) {
+		return fmt.Errorf(`input "map[string]interface{}" value has %d elements, but struct %q has %d fields`, len(in), structName, len(components))
+	}
+
+	for _, component := range components {
+		fieldIn, found := in[component.Name]
+		if !found {
+			return fmt.Errorf(`struct %q has a field %q but it was not found in input "map[string]interface{}" (keys %q)`, structName, component.Name, strings.Join(mapStringInterfaceKeys(in), ", "))
+		}
+
+		if err := e.writeComponent(structName, component, fieldIn); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Encoder) writeTupleFromStruct(structName string, components []*StructComponent, in reflect.Value) error {
+	fieldCount := in.NumField()
+	if fieldCount < len(components) {
+		return fmt.Errorf(`input %q value has only %d fields, but struct %q has %d fields`, in.Type().String(), fieldCount, structName, len(components))
+	}
+
+	writeCount := 0
+	for i := 0; i < fieldCount; i++ {
+		field := in.Field(i)
+		if !field.CanInterface() {
+			if traceEnabled {
+				zlog.Debug("skipping struct field", zap.String("field", field.Type().Field(i).Name))
+				continue
+			}
+		}
+
+		if writeCount >= len(components) {
+			return fmt.Errorf(`input %q value with %d fields has more field to write than struct %q which has %d fields`, in.Type().String(), fieldCount, structName, len(components))
+		}
+
+		if err := e.writeComponent(structName, components[i], field.Interface()); err != nil {
+			return err
+		}
+
+		writeCount++
+	}
+
+	return nil
+}
+
+func (e *Encoder) writeComponent(structName string, component *StructComponent, in interface{}) error {
+	if traceEnabled {
+		zlog.Debug("about to write struct component", zap.Stringer("component", component), zap.String("input_type", fmt.Sprintf("%T", in)))
+	}
+
+	if err := e.writeElement(component.Type, nil, in); err != nil {
+		return fmt.Errorf(`unable to write "%s#%s: %w"`, structName, component.Name, err)
+	}
+
+	return nil
+}
+
+func (e *Encoder) encodeBytesFromInterface(input interface{}) ([]byte, error) {
+	var bytes []byte
+	switch v := input.(type) {
+	case []byte:
+		bytes = v
+	case Hex:
+		bytes = []byte(v)
+	case Hash:
+		bytes = []byte(v)
+	}
+
+	return e.encodeBytes(bytes)
+}
+
+func (e *Encoder) encodeUintFromInterface(input interface{}, size uint64) ([]byte, error) {
+	switch v := input.(type) {
+	case uint8:
+		return e.encodeUint(uint64(v), size)
+	case uint16:
+		return e.encodeUint(uint64(v), size)
+	case uint32:
+		return e.encodeUint(uint64(v), size)
+	case uint64:
+		return e.encodeUint(uint64(v), size)
+	case Uint8:
+		return e.encodeUint(uint64(v), size)
+	case Uint16:
+		return e.encodeUint(uint64(v), size)
+	case Uint32:
+		return e.encodeUint(uint64(v), size)
+	case Uint64:
+		return e.encodeUint(uint64(v), size)
+	case *big.Int:
+		return e.encodeUint(v.Uint64(), size)
+	default:
+		return nil, fmt.Errorf("unsupported uint from type %T", input)
+	}
 }
 
 func (e *Encoder) encodeUint(input uint64, size uint64) ([]byte, error) {
@@ -224,6 +416,7 @@ func (e *Encoder) encodeUint(input uint64, size uint64) ([]byte, error) {
 		shift := (byteCount - 1 - i) * 8
 		buf[i] = byte(input >> shift)
 	}
+
 	return pad(buf), nil
 }
 
@@ -316,8 +509,13 @@ func pad(in []byte) []byte {
 }
 
 func isOffsetType(typeName string) bool {
+	// First as they are probably the most probable type
+	if typeName == "bytes" || typeName == "string" {
+		return true
+	}
+
 	arr, _ := isArray(typeName)
-	return arr || (typeName == "bytes") || (typeName == "string")
+	return arr
 }
 
 func isArray(typeName string) (bool, string) {
@@ -326,4 +524,19 @@ func isArray(typeName string) (bool, string) {
 		return true, strings.TrimRight(typeName, "[]")
 	}
 	return false, typeName
+}
+
+func mapStringInterfaceKeys(in map[string]interface{}) (out []string) {
+	if len(in) <= 0 {
+		return nil
+	}
+
+	i := 0
+	out = make([]string, len(in))
+	for k := range in {
+		out[i] = k
+		i++
+	}
+
+	return out
 }

@@ -17,71 +17,123 @@ package eth
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 )
 
 func ParseABI(abiFilePath string) (*ABI, error) {
-	file, _ := ioutil.ReadFile(abiFilePath)
+	file, err := os.Open(abiFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("open abi file: %w", err)
+	}
+	defer file.Close()
 
-	return parseABIFromBytes(file)
+	return parseABIFromReader(file)
 }
 
-func parseABIFromBytes(input []byte) (*ABI, error) {
-	// Could we "stream" it using `json.NewDecoder` and save on memory for this?
+func parseABIFromReader(reader io.Reader) (*ABI, error) {
+	decoder := json.NewDecoder(reader)
+
 	var declarations []*declaration
-	if err := json.Unmarshal(input, &declarations); err != nil {
+	if err := decoder.Decode(&declarations); err != nil {
 		return nil, fmt.Errorf("read abi: %w", err)
 	}
 
 	abi := &ABI{
 		LogEventsMap: map[string]*LogEventDef{},
-		MethodsMap:   map[string]*MethodDef{},
+		FunctionsMap: map[string]*MethodDef{},
+
+		LogEventsByNameMap: map[string]*LogEventDef{},
+		FunctionsByNameMap: map[string]*MethodDef{},
 	}
 
 	for _, decl := range declarations {
-		if decl.Type == "event" {
-			logEventDef := decl.toLogEventDef()
-			abi.LogEventsMap[string(logEventDef.logID())] = logEventDef
+		if decl.Type == DeclarationTypeFunction {
+			methodDef := decl.toFunctionDef()
+			abi.FunctionsMap[string(methodDef.MethodID())] = methodDef
+			abi.FunctionsByNameMap[methodDef.Name] = methodDef
 		}
 
-		if decl.Type == "function" {
-
+		if decl.Type == DeclarationTypeEvent {
+			logEventDef := decl.toLogEventDef()
+			abi.LogEventsMap[string(logEventDef.logID())] = logEventDef
+			abi.LogEventsByNameMap[logEventDef.Name] = logEventDef
 		}
 	}
 
 	return abi, nil
 }
 
+//go:generate go-enum -f=$GOFILE --lower --marshal --names
+
+//
+// ENUM(
+//   Function
+//   Constructor
+//   Receive
+//   Fallback
+//   Event
+//   Error
+// )
+//
+type DeclarationType int
+
+// declaration is a generic struct output for each ABI element of an Ethereum contact
+// compiled through solidity. It's a fairly generic structure encompassing multiple
+// elements like function, events, constructors and others.
+//
+// See https://docs.soliditylang.org/en/v0.8.11/abi-spec.html#json
 type declaration struct {
-	Name            string      `json:"name,omitempty"`
-	Type            string      `json:"type"`
-	Inputs          []*typeInfo `json:"inputs"`
-	Outputs         []*typeInfo `json:"outputs,omitempty"`
-	Payable         bool        `json:"payable,omitempty"`
-	StateMutability string      `json:"stateMutability,omitempty"`
-	Anonymous       bool        `json:"anonymous,omitempty"`
-	Constant        bool        `json:"constant,omitempty"`
+	// Common to functions and events
+	Name   string          `json:"name,omitempty"`
+	Type   DeclarationType `json:"type"`
+	Inputs []*typeInfo     `json:"inputs"`
+
+	// Functions only
+	Outputs         []*typeInfo     `json:"outputs,omitempty"`
+	StateMutability StateMutability `json:"stateMutability,omitempty"`
+	// Functions only but removed in `solc` >= 0.5, now in `StateMutability` directly
+	Payable  bool `json:"payable,omitempty"`
+	Constant bool `json:"constant,omitempty"`
+
+	// Events only
+	Anonymous bool `json:"anonymous,omitempty"`
 }
 
 func (d *declaration) toFunctionDef() *MethodDef {
 	out := &MethodDef{}
 	out.Name = d.Name
-	out.Payable = d.Payable
-	out.ViewOnly = d.StateMutability == "view"
+	out.StateMutability = d.StateMutability
 
-	out.Parameters = make([]*MethodParameter, len(d.Inputs))
-	for i, input := range d.Inputs {
-		out.Parameters[i] = &MethodParameter{
-			Name:     input.Name,
-			TypeName: input.Type,
+	// Those were removed in `solc` >= 0.5, there are most probably exclusive to each other
+	if d.Payable {
+		out.StateMutability = StateMutabilityNonPayable
+	}
+	if d.Constant {
+		out.StateMutability = StateMutabilityPure
+	}
+
+	if len(d.Inputs) > 0 {
+		out.Parameters = make([]*MethodParameter, len(d.Inputs))
+		for i, input := range d.Inputs {
+			out.Parameters[i] = &MethodParameter{
+				Name:         input.Name,
+				TypeName:     input.Type,
+				InternalType: input.InternalType,
+				Components:   input.Components,
+			}
 		}
 	}
 
-	out.ReturnParameters = make([]*MethodParameter, len(d.Outputs))
-	for i, input := range d.Outputs {
-		out.Parameters[i] = &MethodParameter{
-			Name:     input.Name,
-			TypeName: input.Type,
+	if len(d.Outputs) > 0 {
+		out.ReturnParameters = make([]*MethodParameter, len(d.Outputs))
+		for i, output := range d.Outputs {
+			out.ReturnParameters[i] = &MethodParameter{
+				Name:         output.Name,
+				TypeName:     output.Type,
+				InternalType: output.InternalType,
+				Components:   output.Components,
+			}
 		}
 	}
 
@@ -105,8 +157,19 @@ func (d *declaration) toLogEventDef() *LogEventDef {
 }
 
 type typeInfo struct {
+	InternalType string             `json:"internalType"`
+	Name         string             `json:"name"`
+	Type         string             `json:"type"`
+	Indexed      bool               `json:"indexed"`
+	Components   []*StructComponent `json:"components,omitempty"`
+}
+
+type StructComponent struct {
 	InternalType string `json:"internalType"`
 	Name         string `json:"name"`
 	Type         string `json:"type"`
-	Indexed      bool   `json:"indexed"`
+}
+
+func (c *StructComponent) String() string {
+	return fmt.Sprintf("%s %s (%s)", c.Type, c.Name, c.InternalType)
 }

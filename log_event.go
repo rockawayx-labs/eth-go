@@ -20,9 +20,11 @@ import (
 )
 
 type Log struct {
-	Address []byte   `json:"address,omitempty"`
-	Topics  [][]byte `json:"topics,omitempty"`
-	Data    []byte   `json:"data,omitempty"`
+	Address     []byte   `json:"address,omitempty"`
+	Topics      [][]byte `json:"topics,omitempty"`
+	Data        []byte   `json:"data,omitempty"`
+	IsAnonymous bool     `json:"anonymous,omitempty"`
+
 	// supplement
 	Index      uint32 `json:"index,omitempty"`
 	BlockIndex uint32 `json:"blockIndex,omitempty"`

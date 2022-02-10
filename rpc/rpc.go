@@ -63,6 +63,153 @@ func WithHttpClient(httpClient *http.Client) Option {
 	}
 }
 
+type LogsParams struct {
+	// FromBlock is either block number encoded as a hexadecimal or tagged value which is one of
+	// "latest" (`rpc.LatestBlock()`), "pending" (`rpc.PendingBlock()`) or "earliest" tags (`rpc.EarliestBlockRef`) (optional).
+	FromBlock *BlockRef `json:"fromBlock,omitempty"`
+
+	// ToBlock is either block number encoded as a hexadecimal or tagged value which is one of
+	// "latest" (`LatestBlockRef()`), "pending" (`PendingBlockRef()`) or "earliest" tags (`EarliestBlockRef()`) (optional).
+	ToBlock *BlockRef `json:"toBlock,omitempty"`
+
+	// Address is the contract address or a list of addresses from which logs should originate (optional).
+	Address eth.Address `json:"address,omitempty"`
+
+	// Topics are order-dependent, each topic can also be an array of DATA with "or" options (optional).
+	Topics *TopicFilter `json:"topics,omitempty"`
+}
+
+type TopicFilter struct {
+	topics []TopicFilterExpr
+}
+
+func (f *TopicFilter) String() string {
+	var elements []string
+	for _, topic := range f.topics {
+		elements = append(elements, topic.String())
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(elements, ", "))
+}
+
+func (f *TopicFilter) Append(in interface{}) {
+	f.topics = append(f.topics, newTopicExpr(in))
+}
+
+func (f *TopicFilter) MarshalJSONRPC() ([]byte, error) {
+	return MarshalJSONRPC(f.topics)
+}
+
+type TopicFilterExpr struct {
+	exact *eth.Topic
+	oneOf []eth.Topic
+}
+
+func (f TopicFilterExpr) String() string {
+	if f.oneOf == nil {
+		if f.exact == nil {
+			return "null"
+		}
+
+		bytes := *f.exact
+		return eth.Hex(bytes[:]).String()
+	}
+
+	var elements []string
+	for _, topic := range f.oneOf {
+		elements = append(elements, eth.Hex(topic[:]).String())
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(elements, ", "))
+}
+
+func (f TopicFilterExpr) MarshalJSONRPC() ([]byte, error) {
+	if f.oneOf == nil {
+		return MarshalJSONRPC(f.exact)
+	}
+
+	return MarshalJSONRPC(f.oneOf)
+}
+
+func NewTopicFilter(exprs ...interface{}) (out *TopicFilter) {
+	if len(exprs) == 0 {
+		return nil
+	}
+
+	topics := make([]TopicFilterExpr, len(exprs))
+	for i, expr := range exprs {
+		topics[i] = newTopicExpr(expr)
+	}
+
+	return &TopicFilter{topics: topics}
+}
+
+func newTopicExpr(expr interface{}) (out TopicFilterExpr) {
+	switch v := expr.(type) {
+	case TopicFilterExpr:
+		return v
+	case eth.Topic:
+		return TopicFilterExpr{exact: &v}
+	default:
+		return ExactTopic(v)
+	}
+}
+
+func ExactTopic(in interface{}) TopicFilterExpr {
+	return TopicFilterExpr{exact: eth.LogTopic(in)}
+}
+
+func AnyTopic() TopicFilterExpr {
+	return TopicFilterExpr{exact: nil}
+}
+
+func OneOfTopic(topics ...interface{}) (out TopicFilterExpr) {
+	if len(topics) == 0 {
+		panic("there must be at least one element to create a one of topic element")
+	}
+
+	out.oneOf = make([]eth.Topic, len(topics))
+	for i, topic := range topics {
+		logTopic := eth.LogTopic(topic)
+		if logTopic == nil {
+			panic("it's invalid to use nil value when building a one of topic element")
+		}
+
+		out.oneOf[i] = *logTopic
+	}
+
+	return
+}
+
+func (c *Client) Logs(params LogsParams) ([]*LogEntry, error) {
+	result, err := c.DoRequest("eth_getLogs", []interface{}{params})
+	if err != nil {
+		return nil, fmt.Errorf("request error: %w", err)
+	}
+
+	var logs []*LogEntry
+	err = json.Unmarshal([]byte(result), &logs)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode logs as JSON: %w", err)
+	}
+
+	return logs, nil
+}
+
+func (c *Client) LatestBlockNum() (uint64, error) {
+	resp, err := c.DoRequest("eth_blockNumber", []interface{}{})
+	if err != nil {
+		return 0, fmt.Errorf("unale to perform eth_blockNumber request: %w", err)
+	}
+
+	value, err := strconv.ParseUint(resp, 0, 64)
+	if err != nil {
+		return 0, fmt.Errorf("unable to parse block number %s: %w", resp, err)
+	}
+
+	return value, nil
+}
+
 type CallParams struct {
 	// From the address the transaction is sent from (optional).
 	From eth.Address `json:"from,omitempty"`
@@ -79,18 +226,18 @@ type CallParams struct {
 }
 
 func (c *Client) Call(params CallParams) (string, error) {
-	return c.callAtBlock("eth_call", params, "latest")
+	return c.callAtBlock("eth_call", params, LatestBlock)
 }
 
-func (c *Client) CallAtBlock(params CallParams, blockAt string) (string, error) {
+func (c *Client) CallAtBlock(params CallParams, blockAt *BlockRef) (string, error) {
 	return c.callAtBlock("eth_call", params, blockAt)
 }
 
 func (c *Client) EstimateGas(params CallParams) (string, error) {
-	return c.callAtBlock("eth_estimateGas", params, "latest")
+	return c.callAtBlock("eth_estimateGas", params, LatestBlock)
 }
 
-func (c *Client) callAtBlock(method string, params interface{}, blockAt string) (string, error) {
+func (c *Client) callAtBlock(method string, params interface{}, blockAt *BlockRef) (string, error) {
 	return c.DoRequest(method, []interface{}{params, blockAt})
 }
 
@@ -161,8 +308,29 @@ func (c *Client) Syncing() (*SyncingResp, error) {
 	return out, nil
 }
 
+// TransactionReceipt fetches the receipt associated with the transaction's hash received. If the
+// transaction is not found by the queried node, `nil, nil` is returned. If it's found, the receipt
+// is decoded and `receipt, nil` is returned. Otherwise, the RPC error is returned if something went wrong.
+func (c *Client) TransactionReceipt(hash eth.Hash) (out *TransactionReceipt, err error) {
+	resp, err := c.DoRequest("eth_getTransactionReceipt", []interface{}{hash})
+	if err != nil {
+		return nil, fmt.Errorf("unale to perform eth_getTransactionCount request: %w", err)
+	}
+
+	if resp == "" {
+		return nil, nil
+	}
+
+	err = json.Unmarshal([]byte(resp), &out)
+	if err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return out, nil
+}
+
 func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
-	resp, err := c.DoRequest("eth_getTransactionCount", []interface{}{accountAddr.Pretty(), "latest"})
+	resp, err := c.DoRequest("eth_getTransactionCount", []interface{}{accountAddr.Pretty(), LatestBlock})
 	if err != nil {
 		return 0, fmt.Errorf("unale to perform eth_getTransactionCount request: %w", err)
 	}
@@ -172,11 +340,10 @@ func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
 		return 0, fmt.Errorf("unable to parse nonce %s: %w", resp, err)
 	}
 	return nonce, nil
-
 }
 
 func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
-	resp, err := c.DoRequest("eth_getBalance", []interface{}{accountAddr.Pretty(), "latest"})
+	resp, err := c.DoRequest("eth_getBalance", []interface{}{accountAddr.Pretty(), LatestBlock})
 	if err != nil {
 		return nil, fmt.Errorf("unale to perform eth_getBalance request: %w", err)
 	}
@@ -270,7 +437,7 @@ func NewETHCall(to eth.Address, methodDef *eth.MethodDef, options ...ETHCallOpti
 		},
 		methodDef:       methodDef,
 		responseDecoder: methodDef.DecodeOutput,
-		atExpr:          "latest",
+		atExpr:          LatestBlock,
 	}
 	for _, opt := range options {
 		opt(c)

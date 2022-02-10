@@ -20,18 +20,29 @@ import "go.uber.org/zap"
 // between the two ABI like formats for contract's, i.e. `.abi` file and AST file as output
 // by `solc` compiler.
 type ABI struct {
-	LogEventsMap map[string]*LogEventDef
-	MethodsMap   map[string]*MethodDef
+	LogEventsMap    map[string]*LogEventDef
+	FunctionsMap    map[string]*MethodDef
+	ConstructorsMap map[string]*MethodDef
+
+	LogEventsByNameMap    map[string]*LogEventDef
+	FunctionsByNameMap    map[string]*MethodDef
+	ConstructorsByNameMap map[string]*MethodDef
 }
 
 func (a *ABI) FindLog(topic []byte) *LogEventDef {
-	zlog.Info("looking for log event def by topic", zap.Stringer("topic", Hash(topic)))
+	zlog.Info("looking for log event by topic", zap.Stringer("topic", Hash(topic)))
 
 	return a.LogEventsMap[string(topic)]
 }
 
-func (a *ABI) FindMethod(methodHash []byte) *MethodDef {
-	zlog.Info("looking for function by method hash", zap.Stringer("method_hash", Hash(methodHash)))
+func (a *ABI) FindFunction(functionHash []byte) *MethodDef {
+	zlog.Info("looking for function by hash", zap.Stringer("method_hash", Hash(functionHash)))
 
-	return a.MethodsMap[string(methodHash)]
+	return a.FunctionsMap[string(functionHash)]
+}
+
+func (a *ABI) FindFunctionByName(name string) *MethodDef {
+	zlog.Info("looking for function by name", zap.Stringer("method_name", Hash(name)))
+
+	return a.FunctionsByNameMap[name]
 }

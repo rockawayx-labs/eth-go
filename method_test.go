@@ -41,7 +41,7 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 			expectMethodCall: &MethodCall{
 				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "bytes"}}},
 				Data: []interface{}{
-					[]byte{0xaa, 0xbb, 0xcc},
+					Hex([]byte{0xaa, 0xbb, 0xcc}),
 				},
 			},
 		},
@@ -61,6 +61,21 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 			},
 		},
 		{
+			name:      "testing uint32",
+			signature: "method(uint32)",
+			inputs:    []string{"13"},
+			expectMethodDef: &MethodDef{
+				Name:       "method",
+				Parameters: []*MethodParameter{{TypeName: "uint32"}},
+			},
+			expectMethodCall: &MethodCall{
+				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint32"}}},
+				Data: []interface{}{
+					Uint32(13),
+				},
+			},
+		},
+		{
 			name:      "testing uint64",
 			signature: "method(uint64)",
 			inputs:    []string{"13"},
@@ -71,7 +86,7 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 			expectMethodCall: &MethodCall{
 				MethodDef: &MethodDef{Name: "method", Parameters: []*MethodParameter{{TypeName: "uint64"}}},
 				Data: []interface{}{
-					uint64(13),
+					Uint64(13),
 				},
 			},
 		},
@@ -153,6 +168,79 @@ func TestMethodCall_AppendArgFromString(t *testing.T) {
 			}
 
 			assert.Equal(t, test.expectMethodCall, methodCall)
+		})
+	}
+}
+
+func TestMethodCallData_AppendArgFromString(t *testing.T) {
+	tests := []struct {
+		name         string
+		methodDef    *MethodDef
+		inputs       []string
+		expectedData []interface{}
+	}{
+		{
+			name: "testing tuple",
+			methodDef: &MethodDef{
+				Name: "tuple",
+				Parameters: []*MethodParameter{
+					{Name: "period", TypeName: "tuple", Components: []*StructComponent{
+						{Name: "tokenID", Type: "uint256"},
+						{Name: "fromBlockNum", Type: "uint64"},
+						{Name: "toBlockNum", Type: "uint64"},
+					}},
+				},
+			},
+			inputs: []string{
+				`{"tokenID":1,"fromBlockNum":"0xa","toBlockNum":"11"}`,
+			},
+			expectedData: []interface{}{
+				[]interface{}{
+					big.NewInt(1),
+					Uint64(10),
+					Uint64(11),
+				}},
+		},
+		{
+			name: "testing tuple[]",
+			methodDef: &MethodDef{
+				Name: "tupleArray",
+				Parameters: []*MethodParameter{
+					{Name: "periods", TypeName: "tuple[]", Components: []*StructComponent{
+						{Name: "tokenID", Type: "uint256"},
+						{Name: "fromBlockNum", Type: "uint64"},
+						{Name: "toBlockNum", Type: "uint64"},
+					}},
+				},
+			},
+			inputs: []string{
+				`[{"tokenID":1,"fromBlockNum":"0xa","toBlockNum":"11"},{"tokenID":2,"fromBlockNum":"0x14","toBlockNum":"21"}]`,
+			},
+			expectedData: []interface{}{
+				[]interface{}{
+					[]interface{}{
+						big.NewInt(1),
+						Uint64(10),
+						Uint64(11),
+					},
+					[]interface{}{
+						big.NewInt(2),
+						Uint64(20),
+						Uint64(21),
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			methodCall := test.methodDef.NewCall()
+			for _, input := range test.inputs {
+				methodCall.AppendArgFromString(input)
+			}
+
+			require.Len(t, methodCall.err, 0)
+			assert.Equal(t, test.expectedData, methodCall.Data)
 		})
 	}
 }

@@ -97,6 +97,7 @@ func (d *Decoder) readParameters(parameters []*MethodParameter, methodOffset uin
 			}
 
 			jumpToOffset := offset.(*big.Int).Uint64() + methodOffset
+			zlog.Debug("about to jump to offset for type", zap.Uint64("actual_offset", d.offset), zap.Uint64("jump_to_offset", jumpToOffset))
 
 			// The minus 32 is to ensure that offset hits a location where at least 32 bytes can be read
 			if jumpToOffset > d.total-32 {
@@ -209,6 +210,8 @@ func (d *Decoder) read(typeName string) (out interface{}, err error) {
 		return d.ReadAddress()
 	case "string":
 		return d.ReadString()
+	case "bytes32":
+		return d.ReadFixedBytes()
 	case "bytes":
 		return d.ReadBytes()
 	}
@@ -262,6 +265,15 @@ func (d *Decoder) ReadBytes() ([]byte, error) {
 	}
 
 	data, err := d.ReadBuffer(size.Uint64())
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (d *Decoder) ReadFixedBytes() ([]byte, error) {
+	data, err := d.ReadBuffer(32)
 	if err != nil {
 		return nil, err
 	}

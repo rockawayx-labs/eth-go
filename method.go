@@ -15,23 +15,52 @@
 package eth
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
 )
 
+//go:generate go-enum -f=$GOFILE --lower --marshal --names
+
+//
+// ENUM(
+//   Pure
+//   View
+//   NonPayable
+//   Payable
+// )
+//
+type StateMutability int
+
 type MethodParameter struct {
-	Name           string
-	TypeName       string
+	// Name represents the name of the parameter as defined by the
+	// developer in the Solidity code of the contract.
+	Name string
+	// TypeName represents the type of the parameter, this is standard
+	// types known to Solidity. Array have a suffix `[]` (can be nested)
+	// and struct type is always `tuple` with an filled up `Components`
+	// defining the struct.
+	TypeName string
+	// TypeMutability is unclear, requires more investigation, I don't recall
+	// to which Solidity concept it refers to.
 	TypeMutability string
-	Payable        bool
+	// Payable determines if the parameter is a payable value so an
+	// Ether value.
+	Payable bool
+	// InternalType is the internal type to the contract, usually equal
+	// to `TypeName` but can be different for example if a type `uint`
+	// was defined, in this case `TypeName` will be `uint256` and internal
+	// type will be `uint`. Tuple which have `TypeName` `tuple` but internal
+	// type is `struct <Contract>.<Struct>` is another exceptions.
+	InternalType string
+	// Components represents that struct fields of a particular tuple. Only
+	// filled up when `TypeName` is equal to `tuple` (or array of tuples).
+	Components []*StructComponent
 }
 
 func newMethodParameter(mStr string) (*MethodParameter, error) {
@@ -49,12 +78,26 @@ func newMethodParameter(mStr string) (*MethodParameter, error) {
 	return m, nil
 }
 
+func (p *MethodParameter) Signature() string {
+	typeName := p.TypeName
+	if strings.HasPrefix(typeName, "tuple") {
+		// FIXME: Need to be recursive, let's add only once someone request it
+		componentTypeNames := make([]string, len(p.Components))
+		for i, component := range p.Components {
+			componentTypeNames[i] = component.Type
+		}
+
+		typeName = strings.Replace(typeName, "tuple", fmt.Sprintf("(%s)", strings.Join(componentTypeNames, ",")), 1)
+	}
+
+	return typeName
+}
+
 type MethodDef struct {
 	Name             string
 	Parameters       []*MethodParameter
 	ReturnParameters []*MethodParameter
-	Payable          bool
-	ViewOnly         bool
+	StateMutability  StateMutability
 }
 
 func MustNewMethodDef(signature string) *MethodDef {
@@ -79,6 +122,14 @@ func NewMethodDef(signature string) (*MethodDef, error) {
 	}, nil
 }
 
+// NewCall instantiate a new call from the method definition and uses
+// the received arguments as elements used to resolve the parameters
+// values.
+//
+// A call is a particular instance of a Method where ultimately the
+// parameters's value will be resolved. A method call in opposition
+// to a method definition can be encoded according to Ethereum rules
+// or decode data returned for this call against the definition.
 func (f *MethodDef) NewCall(args ...interface{}) *MethodCall {
 	call := &MethodCall{MethodDef: f}
 	if len(args) > 0 {
@@ -92,6 +143,21 @@ func (f *MethodDef) NewCall(args ...interface{}) *MethodCall {
 	return call
 }
 
+// NewCallFromString works exactly like `NewCall`` except that it
+// actually assumes all arguments are string version of the actual
+// Ethereum types defined by the method and append them to the Data
+// slice by calling `AppendArgFromString` which converts the string
+// representation to the correct type.
+func (f *MethodDef) NewCallFromString(args ...string) *MethodCall {
+	call := &MethodCall{MethodDef: f}
+
+	for _, arg := range args {
+		call.AppendArgFromString(arg)
+	}
+
+	return call
+}
+
 func (f *MethodDef) MethodID() []byte {
 	return Keccak256([]byte(f.Signature()))[0:4]
 }
@@ -99,7 +165,7 @@ func (f *MethodDef) MethodID() []byte {
 func (f *MethodDef) Signature() string {
 	var args []string
 	for _, parameter := range f.Parameters {
-		args = append(args, parameter.TypeName)
+		args = append(args, parameter.Signature())
 	}
 
 	return fmt.Sprintf("%s(%s)", f.Name, strings.Join(args, ","))
@@ -135,6 +201,39 @@ func (f *MethodDef) DecodeOutputFromString(data string) ([]interface{}, error) {
 	return decoder.ReadOutput(f.ReturnParameters)
 }
 
+func (f *MethodDef) DecodeToObjectFromString(data string) (out map[string]interface{}, err error) {
+	if len(f.ReturnParameters) == 0 {
+		return nil, fmt.Errorf("no return parameters defined for method")
+	}
+
+	decoder, err := NewDecoderFromString(data)
+	if err != nil {
+		return nil, fmt.Errorf("data is not a valid hexadecimal value")
+	}
+
+	values, err := decoder.ReadOutput(f.ReturnParameters)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read output")
+	}
+
+	out = make(map[string]interface{})
+	for i, returnParm := range f.ReturnParameters {
+		fieldName := returnParm.Name
+		if fieldName == "" {
+			if len(f.ReturnParameters) == 1 {
+				fieldName = f.Name
+			} else {
+				fieldName = fmt.Sprintf("%s%d", f.Name, i)
+			}
+		}
+
+		zlog.Debug("object decoding assigning new field", zap.String("field_name", fieldName), zap.Reflect("value", values[i]))
+		out[fieldName] = values[i]
+	}
+
+	return out, nil
+}
+
 type MethodCall struct {
 	MethodDef *MethodDef
 	Data      []interface{}
@@ -148,52 +247,256 @@ func (f *MethodCall) AppendArgFromString(v string) {
 		f.err = append(f.err, fmt.Errorf("args exceeds method definition parameter count %d", len(f.MethodDef.Parameters)))
 		return
 	}
+
 	param := f.MethodDef.Parameters[i]
-	var out interface{}
-	switch param.TypeName {
-	case "bytes":
-		data, err := hex.DecodeString(SanitizeHex(v))
-		if err != nil {
-			f.err = append(f.err, fmt.Errorf("unable to convert %q to bytes: %w", v, err))
-			return
-		}
-		out = data
-	case "address[]":
-		var addrs []Address
-		err := json.Unmarshal([]byte(v), &addrs)
-		if err != nil {
-			f.err = append(f.err, fmt.Errorf("unable to convert %q to address: %w", v, err))
-			return
-		}
-		out = addrs
-	case "address":
-		addr, err := NewAddress(v)
-		if err != nil {
-			f.err = append(f.err, fmt.Errorf("unable to convert %q to address: %w", v, err))
-			return
-		}
-		out = addr
-	case "uint64":
-		v, err := strconv.ParseUint(v, 10, 64)
-		if err != nil {
-			f.err = append(f.err, fmt.Errorf("unable to convert %q to uint64: %w", v, err))
-			return
-		}
-		out = v
-	case "uint112", "uint256":
-		var ok bool
-		out, ok = new(big.Int).SetString(v, 10)
-		if !ok {
-			f.err = append(f.err, fmt.Errorf("unable to convert %q to %s ", v, param.TypeName))
-			return
-		}
-	case "bool":
-		out = v == "true"
-	default:
-		f.err = append(f.err, fmt.Errorf("cannot append arg from string for unsupported type %q", param.TypeName))
+	out, err := argToDataType(v, param.TypeName, param.Components)
+	if err != nil {
+		f.err = append(f.err, fmt.Errorf("invalid string argument %q for parameter %s: %w", param.Name, v, err))
 		return
 	}
+
 	f.Data = append(f.Data, out)
+}
+
+func argToDataType(in interface{}, typeName string, components []*StructComponent) (interface{}, error) {
+	switch typeName {
+	case "string":
+		if v, ok := in.(string); ok {
+			return v, nil
+		}
+
+	case "bytes":
+		switch v := in.(type) {
+		case string:
+			data, err := NewHex(v)
+			if err != nil {
+				return nil, fmt.Errorf("invalid hex: %w", err)
+			}
+
+			return data, nil
+		case []byte:
+			return v, nil
+		}
+
+	case "bytes32":
+		switch v := in.(type) {
+		case string:
+			data, err := NewHash(v)
+			if err != nil {
+				return nil, fmt.Errorf("invalid bytes32: %w", err)
+			}
+
+			return data, nil
+		case []byte:
+			return v, nil
+		}
+
+	case "address[]":
+		if v, ok := in.(string); ok {
+			var addrs []Address
+			err := json.Unmarshal([]byte(v), &addrs)
+			if err != nil {
+				return nil, fmt.Errorf("invalid JSON address array: %w", err)
+			}
+
+			return addrs, nil
+		}
+
+	case "address":
+		switch v := in.(type) {
+		case string:
+			addr, err := NewAddress(v)
+			if err != nil {
+				return nil, fmt.Errorf("invalid address: %w", err)
+			}
+
+			return addr, nil
+		case []byte:
+			return Address(v), nil
+		}
+
+	case "uint8":
+		switch v := in.(type) {
+		case string:
+			var value Uint8
+			if err := value.UnmarshalText([]byte(v)); err != nil {
+				return nil, fmt.Errorf("invalid uint8: %w", err)
+			}
+
+			return value, nil
+
+		// Type float64 arise when parsing JSON numbers
+		case float64:
+			return Uint8(v), nil
+		}
+
+	case "uint16":
+		switch v := in.(type) {
+		case string:
+			var value Uint16
+			if err := value.UnmarshalText([]byte(v)); err != nil {
+				return nil, fmt.Errorf("invalid uint16: %w", err)
+			}
+
+			return value, nil
+
+		// Type float64 arise when parsing JSON numbers
+		case float64:
+			return Uint16(v), nil
+		}
+
+	case "uint24", "uint32":
+		switch v := in.(type) {
+		case string:
+			var value Uint32
+			if err := value.UnmarshalText([]byte(v)); err != nil {
+				return nil, fmt.Errorf("invalid %s: %w", typeName, err)
+			}
+
+			return value, nil
+
+		// Type float64 arise when parsing JSON numbers
+		case float64:
+			return Uint32(v), nil
+		}
+
+	case "uint40", "uint48", "uint56", "uint64":
+		switch v := in.(type) {
+		case string:
+			var value Uint64
+			if err := value.UnmarshalText([]byte(v)); err != nil {
+				return nil, fmt.Errorf("invalid %s: %w", typeName, err)
+			}
+
+			return value, nil
+
+		// Type float64 arise when parsing JSON numbers
+		case float64:
+			return Uint64(v), nil
+		}
+
+	case "uint72", "uint80", "uint88", "uint96", "uint104", "uint112", "uint120", "uint128", "uint136", "uint144", "uint152", "uint160", "uint168", "uint176", "uint184", "uint192", "uint200", "uint208", "uint216", "uint224", "uint232", "uint240", "uint248", "uint256":
+		switch v := in.(type) {
+		case string:
+			out, ok := new(big.Int).SetString(v, 0)
+			if !ok {
+				return nil, fmt.Errorf("invalid %s", typeName)
+			}
+
+			return out, nil
+
+		// Type float64 arise when parsing JSON numbers
+		case float64:
+			return new(big.Int).SetUint64(uint64(v)), nil
+		}
+
+	case "tuple":
+		switch v := in.(type) {
+		case string:
+			var t interface{}
+			if err := json.Unmarshal([]byte(v), &t); err != nil {
+				return nil, fmt.Errorf("invalid JSON %w", err)
+			}
+
+			switch vt := t.(type) {
+			case []interface{}:
+				return tupleInterfaceSliceToDataType(vt, components)
+
+			case map[string]interface{}:
+				return tupleMapSliceToDataType(vt, components)
+
+			default:
+				return nil, fmt.Errorf("accepting only JSON array or JSON object, got %T", vt)
+			}
+
+		case []interface{}:
+			return tupleInterfaceSliceToDataType(v, components)
+
+		case map[string]interface{}:
+			return tupleMapSliceToDataType(v, components)
+		}
+
+	case "tuple[]":
+		switch v := in.(type) {
+		case string:
+			var t interface{}
+			if err := json.Unmarshal([]byte(v), &t); err != nil {
+				return nil, fmt.Errorf("invalid JSON %w", err)
+			}
+
+			switch vt := t.(type) {
+			case []interface{}:
+				return tupleArrayInterfaceSliceToDataType(vt, components)
+
+			default:
+				return nil, fmt.Errorf("accepting only JSON array, got %T", vt)
+			}
+
+		case []interface{}:
+			return tupleArrayInterfaceSliceToDataType(v, components)
+
+		}
+
+	case "bool":
+		return in == "true", nil
+
+	default:
+		return nil, fmt.Errorf("unsupported type %s", typeName)
+	}
+
+	return nil, fmt.Errorf("converting %T to type %s is unsupported", in, typeName)
+}
+
+func tupleInterfaceSliceToDataType(in []interface{}, components []*StructComponent) (out interface{}, err error) {
+	if len(in) != len(components) {
+		return nil, fmt.Errorf(`input "[]interface{}" value has %d elements, but there is %d struct components`, len(in), len(components))
+	}
+
+	elements := make([]interface{}, len(components))
+	for i, component := range components {
+		elements[i], err = argToDataType(in[i], component.Type, nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to transfrom struct component %s from input type %T: %w", component.Name, in[i], err)
+		}
+	}
+
+	return elements, nil
+}
+
+func tupleArrayInterfaceSliceToDataType(in []interface{}, components []*StructComponent) (out interface{}, err error) {
+	elements := make([]interface{}, len(in))
+	for i := range in {
+		elements[i], err = argToDataType(in[i], "tuple", components)
+		if err != nil {
+			return nil, fmt.Errorf("unable to transfrom index %d of tuple array from input type %T: %w", i, in[i], err)
+		}
+	}
+
+	return elements, nil
+}
+
+func tupleMapSliceToDataType(in map[string]interface{}, components []*StructComponent) (out interface{}, err error) {
+	if len(in) != len(components) {
+		return nil, fmt.Errorf(`input "map[string]interface{}" value has %d elements, but there is %d struct components`, len(in), len(components))
+	}
+
+	i := 0
+	elements := make([]interface{}, len(components))
+	for _, component := range components {
+		fieldIn, found := in[component.Name]
+		if !found {
+			return fmt.Errorf(`struct component %s was not found in input "map[string]interface{}" (keys %q)`, component.Name, strings.Join(mapStringInterfaceKeys(in), ", ")), nil
+		}
+
+		elements[i], err = argToDataType(fieldIn, component.Type, nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to transfrom struct component %s from input type %T: %w", component.Name, fieldIn, err)
+		}
+
+		i++
+	}
+
+	return elements, nil
 }
 
 func (f *MethodCall) AppendArg(v interface{}) {

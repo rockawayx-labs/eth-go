@@ -134,3 +134,22 @@ func (p *PrivateKeySigner) Signature(nonce uint64, to []byte, value *big.Int, ga
 
 	return v, r, s, nil
 }
+
+func (p *PrivateKeySigner) SignHash(hash eth.Hash) (signature []byte, err error) {
+	privKey := (*btcec.PrivateKey)(p.privateKey.ToECDSA())
+	compressedSignature, err := btcec.SignCompact(btcec.S256(), privKey, hash, false)
+	if err != nil {
+		return nil, fmt.Errorf("sign compact: %w", err)
+	}
+
+	signature = make([]byte, 65)
+	copy(signature, compressedSignature[1:65])
+
+	// In btcec, a `v` (i.e. byte at [0]) of 27 means the parity value of Y was 0
+	// and if the parity was 1. We must send the parity bit as 27 or 28 since
+	// when using `ecrecover` built-in intrinsic, `27` is removed from the value to
+	// determine the parity bit.
+	signature[64] = compressedSignature[0]
+
+	return signature, nil
+}
