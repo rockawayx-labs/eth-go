@@ -16,9 +16,11 @@ package rpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -181,8 +183,8 @@ func OneOfTopic(topics ...interface{}) (out TopicFilterExpr) {
 	return
 }
 
-func (c *Client) Logs(params LogsParams) ([]*LogEntry, error) {
-	result, err := c.DoRequest("eth_getLogs", []interface{}{params})
+func (c *Client) Logs(ctx context.Context, params LogsParams) ([]*LogEntry, error) {
+	result, err := c.DoRequest(ctx, "eth_getLogs", []interface{}{params})
 	if err != nil {
 		return nil, fmt.Errorf("request error: %w", err)
 	}
@@ -196,10 +198,25 @@ func (c *Client) Logs(params LogsParams) ([]*LogEntry, error) {
 	return logs, nil
 }
 
-func (c *Client) LatestBlockNum() (uint64, error) {
-	resp, err := c.DoRequest("eth_blockNumber", []interface{}{})
+func (c *Client) GetBlockByNumber(ctx context.Context, blockNum uint64) (*Block, error) {
+	resp, err := c.DoRequest(ctx, "eth_getBlockByNumber", []interface{}{eth.Uint64(blockNum), nil})
 	if err != nil {
-		return 0, fmt.Errorf("unale to perform eth_blockNumber request: %w", err)
+		return nil, fmt.Errorf("unable to perform eth_getBlockByNumber request: %w", err)
+	}
+
+	var block *Block
+	err = json.Unmarshal([]byte(resp), &block)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode block from JSON: %w", err)
+	}
+
+	return block, nil
+}
+
+func (c *Client) LatestBlockNum(ctx context.Context) (uint64, error) {
+	resp, err := c.DoRequest(ctx, "eth_blockNumber", []interface{}{})
+	if err != nil {
+		return 0, fmt.Errorf("unable to perform eth_blockNumber request: %w", err)
 	}
 
 	value, err := strconv.ParseUint(resp, 0, 64)
@@ -225,34 +242,39 @@ type CallParams struct {
 	Data interface{} `json:"data,omitempty"`
 }
 
-func (c *Client) Call(params CallParams) (string, error) {
-	return c.callAtBlock("eth_call", params, LatestBlock)
+func (c *Client) Call(ctx context.Context, params CallParams) (string, error) {
+	return c.callAtBlock(ctx, "eth_call", params, LatestBlock)
 }
 
-func (c *Client) CallAtBlock(params CallParams, blockAt *BlockRef) (string, error) {
-	return c.callAtBlock("eth_call", params, blockAt)
+func (c *Client) CallAtBlock(ctx context.Context, params CallParams, blockAt *BlockRef) (string, error) {
+	return c.callAtBlock(ctx, "eth_call", params, blockAt)
 }
 
-func (c *Client) EstimateGas(params CallParams) (string, error) {
-	return c.callAtBlock("eth_estimateGas", params, LatestBlock)
+func (c *Client) EstimateGas(ctx context.Context, params CallParams) (string, error) {
+	return c.callAtBlock(ctx, "eth_estimateGas", params, LatestBlock)
 }
 
-func (c *Client) callAtBlock(method string, params interface{}, blockAt *BlockRef) (string, error) {
-	return c.DoRequest(method, []interface{}{params, blockAt})
+func (c *Client) callAtBlock(ctx context.Context, method string, params interface{}, blockAt *BlockRef) (string, error) {
+	return c.DoRequest(ctx, method, []interface{}{params, blockAt})
 }
 
-func (c *Client) SendRaw(rawData []byte) (string, error) {
-	return c.DoRequest("eth_sendRawTransaction", []interface{}{rawData})
+// Depreacted: Use SendRawTransaction instead
+func (c *Client) SendRaw(ctx context.Context, rawData []byte) (string, error) {
+	return c.DoRequest(ctx, "eth_sendRawTransaction", []interface{}{rawData})
 }
 
-func (c *Client) ChainID() (*big.Int, error) {
+func (c *Client) SendRawTransaction(ctx context.Context, rawData []byte) (string, error) {
+	return c.DoRequest(ctx, "eth_sendRawTransaction", []interface{}{rawData})
+}
+
+func (c *Client) ChainID(ctx context.Context) (*big.Int, error) {
 	if c.chainID != nil {
 		return c.chainID, nil
 	}
 
-	resp, err := c.DoRequest("eth_chainId", []interface{}{})
+	resp, err := c.DoRequest(ctx, "eth_chainId", []interface{}{})
 	if err != nil {
-		return nil, fmt.Errorf("unale to perform eth_chainId request: %w", err)
+		return nil, fmt.Errorf("unable to perform eth_chainId request: %w", err)
 	}
 
 	i := &big.Int{}
@@ -264,10 +286,10 @@ func (c *Client) ChainID() (*big.Int, error) {
 	return c.chainID, nil
 }
 
-func (c *Client) ProtocolVersion() (string, error) {
-	resp, err := c.DoRequest("eth_protocolVersion", []interface{}{})
+func (c *Client) ProtocolVersion(ctx context.Context) (string, error) {
+	resp, err := c.DoRequest(ctx, "eth_protocolVersion", []interface{}{})
 	if err != nil {
-		return "", fmt.Errorf("unale to perform eth_protocolVersion request: %w", err)
+		return "", fmt.Errorf("unable to perform eth_protocolVersion request: %w", err)
 	}
 
 	return resp, nil
@@ -279,10 +301,10 @@ type SyncingResp struct {
 	HighestBlockNum  uint64 `json:"highest_block_num"`
 }
 
-func (c *Client) Syncing() (*SyncingResp, error) {
-	resp, err := c.DoRequest("eth_syncing", []interface{}{})
+func (c *Client) Syncing(ctx context.Context) (*SyncingResp, error) {
+	resp, err := c.DoRequest(ctx, "eth_syncing", []interface{}{})
 	if err != nil {
-		return nil, fmt.Errorf("unale to perform eth_syncing request: %w", err)
+		return nil, fmt.Errorf("unable to perform eth_syncing request: %w", err)
 	}
 
 	if resp == "false" {
@@ -311,10 +333,10 @@ func (c *Client) Syncing() (*SyncingResp, error) {
 // TransactionReceipt fetches the receipt associated with the transaction's hash received. If the
 // transaction is not found by the queried node, `nil, nil` is returned. If it's found, the receipt
 // is decoded and `receipt, nil` is returned. Otherwise, the RPC error is returned if something went wrong.
-func (c *Client) TransactionReceipt(hash eth.Hash) (out *TransactionReceipt, err error) {
-	resp, err := c.DoRequest("eth_getTransactionReceipt", []interface{}{hash})
+func (c *Client) TransactionReceipt(ctx context.Context, hash eth.Hash) (out *TransactionReceipt, err error) {
+	resp, err := c.DoRequest(ctx, "eth_getTransactionReceipt", []interface{}{hash})
 	if err != nil {
-		return nil, fmt.Errorf("unale to perform eth_getTransactionCount request: %w", err)
+		return nil, fmt.Errorf("unable to perform eth_getTransactionCount request: %w", err)
 	}
 
 	if resp == "" {
@@ -329,10 +351,14 @@ func (c *Client) TransactionReceipt(hash eth.Hash) (out *TransactionReceipt, err
 	return out, nil
 }
 
-func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
-	resp, err := c.DoRequest("eth_getTransactionCount", []interface{}{accountAddr.Pretty(), LatestBlock})
+func (c *Client) GetTransactionCount(ctx context.Context, accountAddr eth.Address) (uint64, error) {
+	return c.Nonce(ctx, accountAddr)
+}
+
+func (c *Client) Nonce(ctx context.Context, accountAddr eth.Address) (uint64, error) {
+	resp, err := c.DoRequest(ctx, "eth_getTransactionCount", []interface{}{accountAddr.Pretty(), LatestBlock})
 	if err != nil {
-		return 0, fmt.Errorf("unale to perform eth_getTransactionCount request: %w", err)
+		return 0, fmt.Errorf("unable to perform eth_getTransactionCount request: %w", err)
 	}
 
 	nonce, err := strconv.ParseUint(strings.TrimPrefix(resp, "0x"), 16, 64)
@@ -342,10 +368,10 @@ func (c *Client) Nonce(accountAddr eth.Address) (uint64, error) {
 	return nonce, nil
 }
 
-func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
-	resp, err := c.DoRequest("eth_getBalance", []interface{}{accountAddr.Pretty(), LatestBlock})
+func (c *Client) GetBalance(ctx context.Context, accountAddr eth.Address) (*eth.TokenAmount, error) {
+	resp, err := c.DoRequest(ctx, "eth_getBalance", []interface{}{accountAddr.Pretty(), LatestBlock})
 	if err != nil {
-		return nil, fmt.Errorf("unale to perform eth_getBalance request: %w", err)
+		return nil, fmt.Errorf("unable to perform eth_getBalance request: %w", err)
 	}
 
 	v, ok := new(big.Int).SetString(strings.TrimPrefix(resp, "0x"), 16)
@@ -359,10 +385,10 @@ func (c *Client) GetBalance(accountAddr eth.Address) (*eth.TokenAmount, error) {
 	}, nil
 }
 
-func (c *Client) GasPrice() (*big.Int, error) {
-	resp, err := c.DoRequest("eth_gasPrice", []interface{}{})
+func (c *Client) GasPrice(ctx context.Context) (*big.Int, error) {
+	resp, err := c.DoRequest(ctx, "eth_gasPrice", []interface{}{})
 	if err != nil {
-		return nil, fmt.Errorf("unale to perform eth_gasPrice request: %w", err)
+		return nil, fmt.Errorf("unable to perform eth_gasPrice request: %w", err)
 	}
 
 	i := &big.Int{}
@@ -462,7 +488,7 @@ func (c *ETHCall) ToRequest() *RPCRequest {
 
 type ResponseDecoder func([]byte) ([]interface{}, error)
 
-func (c *Client) DoRequests(reqs []*RPCRequest) ([]*RPCResponse, error) {
+func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResponse, error) {
 	// sanitize reqs
 	var lastID int
 	// we need IDs to be sorted
@@ -481,7 +507,7 @@ func (c *Client) DoRequests(reqs []*RPCRequest) ([]*RPCResponse, error) {
 		zlog.Debug("json_rpc requests", zap.String("requests", string(reqsBytes)))
 	}
 
-	resp, err := c.doRequest(bytes.NewBuffer(reqsBytes))
+	resp, err := c.doRequest(ctx, bytes.NewBuffer(reqsBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +527,7 @@ func (c *Client) DoRequests(reqs []*RPCRequest) ([]*RPCResponse, error) {
 	return results, nil
 }
 
-func (c *Client) DoRequest(method string, params []interface{}) (string, error) {
+func (c *Client) DoRequest(ctx context.Context, method string, params []interface{}) (string, error) {
 	req := RPCRequest{
 		Params:  params,
 		JSONRPC: "2.0",
@@ -517,7 +543,7 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 		zlog.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
-	resp, err := c.doRequest(bytes.NewBuffer(reqCnt))
+	resp, err := c.doRequest(ctx, bytes.NewBuffer(reqCnt))
 	if err != nil {
 		return "", err
 	}
@@ -532,8 +558,8 @@ func (c *Client) DoRequest(method string, params []interface{}) (string, error) 
 	return results[0].Content, results[0].Err
 }
 
-func (c *Client) doRequest(body *bytes.Buffer) ([]byte, error) {
-	resp, err := c.httpClient.Post(c.URL, "application/json", body)
+func (c *Client) doRequest(ctx context.Context, body *bytes.Buffer) ([]byte, error) {
+	resp, err := c.post(ctx, c.URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("sending request to json_rpc endpoint: %w", err)
 	}
@@ -551,6 +577,16 @@ func (c *Client) doRequest(body *bytes.Buffer) ([]byte, error) {
 		zlog.Debug("json_rpc call response", zap.String("response_body", string(bodyBytes)))
 	}
 	return bodyBytes, nil
+}
+
+func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *http.Response, err error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	return c.httpClient.Do(req)
 }
 
 func hex2uint64(hexStr string) uint64 {

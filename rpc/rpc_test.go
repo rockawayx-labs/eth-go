@@ -15,6 +15,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"math/big"
@@ -32,7 +33,7 @@ func TestRPC_ErrorHandling(t *testing.T) {
 	defer closer()
 
 	client := NewClient(server.URL)
-	_, err := client.Call(CallParams{To: eth.MustNewAddress("0x2")})
+	_, err := client.Call(context.Background(), CallParams{To: eth.MustNewAddress("0x2")})
 
 	assert.Equal(t, &ErrResponse{Code: -32000, Message: "invalid error"}, err)
 }
@@ -97,7 +98,7 @@ func TestRPC_Call(t *testing.T) {
 			defer closer()
 
 			client := NewClient(server.URL)
-			_, err := client.Call(test.in)
+			_, err := client.Call(context.Background(), test.in)
 
 			if test.expectedErr == nil {
 				require.NoError(t, err)
@@ -136,7 +137,7 @@ func TestRPC_SendRaw(t *testing.T) {
 			defer closer()
 
 			client := NewClient(server.URL)
-			_, err := client.SendRaw(test.in)
+			_, err := client.SendRawTransaction(context.Background(), test.in)
 
 			if test.expectedErr == nil {
 				require.NoError(t, err)
