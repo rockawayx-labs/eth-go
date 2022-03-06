@@ -22,42 +22,74 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Uint8 uint8
 
 func (b *Uint8) UnmarshalText(text []byte) error {
 	value, err := parseUint(string(text), 8)
-	*b = Uint8(value)
+	if err != nil {
+		return err
+	}
 
-	return err
+	*b = Uint8(value)
+	return nil
 }
 
 type Uint16 uint16
 
 func (b *Uint16) UnmarshalText(text []byte) error {
 	value, err := parseUint(string(text), 16)
-	*b = Uint16(value)
+	if err != nil {
+		return err
+	}
 
-	return err
+	*b = Uint16(value)
+	return nil
 }
 
 type Uint32 uint32
 
 func (b *Uint32) UnmarshalText(text []byte) error {
 	value, err := parseUint(string(text), 32)
-	*b = Uint32(value)
+	if err != nil {
+		return err
+	}
 
-	return err
+	*b = Uint32(value)
+	return nil
 }
 
 type Uint64 uint64
 
 func (b *Uint64) UnmarshalText(text []byte) error {
 	value, err := parseUint(string(text), 64)
-	*b = Uint64(value)
+	if err != nil {
+		return err
+	}
 
-	return err
+	*b = Uint64(value)
+	return nil
+}
+
+// Timestamp represents a timestamp value on the Ethereum chain always in UTC
+// time zone.
+type Timestamp time.Time
+
+func (t Timestamp) MarshalText() ([]byte, error) {
+	return []byte((time.Time)(t).Format(time.RFC3339)), nil
+}
+
+func (t *Timestamp) UnmarshalText(text []byte) error {
+	// Shall we deal with an actual date time string format also here?
+	value, err := parseUint(string(text), 64)
+	if err != nil {
+		return err
+	}
+
+	*t = Timestamp(time.Unix(int64(value), 0).UTC())
+	return nil
 }
 
 func parseUint(text string, bitSize int) (uint64, error) {
@@ -88,6 +120,107 @@ func parseUint(text string, bitSize int) (uint64, error) {
 
 	return value, nil
 }
+
+type Int8 int8
+
+func (b *Int8) UnmarshalText(text []byte) error {
+	value, err := parseInt(string(text), 8)
+	if err != nil {
+		return err
+	}
+
+	*b = Int8(value)
+	return nil
+}
+
+type Int16 int16
+
+func (b *Int16) UnmarshalText(text []byte) error {
+	value, err := parseInt(string(text), 16)
+	if err != nil {
+		return err
+	}
+
+	*b = Int16(value)
+	return nil
+}
+
+type Int32 int32
+
+func (b *Int32) UnmarshalText(text []byte) error {
+	value, err := parseInt(string(text), 32)
+	if err != nil {
+		return err
+	}
+
+	*b = Int32(value)
+	return nil
+}
+
+type Int64 int64
+
+func (b *Int64) UnmarshalText(text []byte) error {
+	value, err := parseInt(string(text), 64)
+	if err != nil {
+		return err
+	}
+
+	*b = Int64(value)
+	return nil
+}
+
+func parseInt(text string, bitSize int) (int64, error) {
+	if len(text) == 0 {
+		return 0, nil
+	}
+
+	// If it's a hexadecimal string, let's parse it as-is
+	if strings.HasPrefix(text, "0x") || strings.HasPrefix(text, "0X") {
+		text = text[2:]
+		if text == "" {
+			return 0, nil
+		}
+
+		value, err := strconv.ParseInt(text, 16, bitSize)
+		if err != nil {
+			return 0, fmt.Errorf("invalid hex int%d number: %w", bitSize, err)
+		}
+
+		return value, nil
+	}
+
+	// Otherwise, we assume it's a decimal number
+	value, err := strconv.ParseInt(text, 10, bitSize)
+	if err != nil {
+		return 0, fmt.Errorf("invalid int%d number: %w", bitSize, err)
+	}
+
+	return value, nil
+}
+
+type Bytes []byte
+
+func MustNewBytes(input string) Bytes {
+	return Bytes(mustNewByteSlice("bytes", input))
+}
+
+func NewBytes(input string) (Bytes, error) {
+	out, err := newByteSlice("bytes", input)
+	if err != nil {
+		return nil, err
+	}
+
+	return Bytes(out), nil
+}
+
+func (h Bytes) String() string                   { return byteSlice(h).String() }
+func (h Bytes) Pretty() string                   { return byteSlice(h).Pretty() }
+func (h Bytes) Bytes() []byte                    { return h[:] }
+func (h Bytes) MarshalText() ([]byte, error)     { return byteSlice(h).MarshalText() }
+func (h Bytes) ID() uint64                       { return byteSlice(h).ID() }
+func (h Bytes) MarshalJSON() ([]byte, error)     { return byteSlice(h).MarshalJSON() }
+func (h Bytes) MarshalJSONRPC() ([]byte, error)  { return byteSlice(h).MarshalJSONRPC() }
+func (h *Bytes) UnmarshalJSON(data []byte) error { return (*byteSlice)(h).UnmarshalJSON(data) }
 
 type Hex []byte
 

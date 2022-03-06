@@ -109,16 +109,16 @@ type TransactionReceipt struct {
 }
 
 type Block struct {
-	Number           eth.Uint64 `json:"number"`
-	Hash             eth.Hash   `json:"hash"`
-	ParentHash       eth.Hash   `json:"parentHash"`
-	Timestamp        eth.Uint64 `json:"timestamp"`
-	StateRoot        eth.Hash   `json:"stateRoot"`
-	TransactionsRoot eth.Hash   `json:"transactionsRoot"`
-	ReceiptsRoot     eth.Hash   `json:"receiptsRoot"`
-	MixHash          eth.Hash   `json:"mixHash"`
-	GasLimit         eth.Uint64 `json:"gasLimit"`
-	GasUsed          eth.Uint64 `json:"gasUsed"`
+	Number           eth.Uint64    `json:"number"`
+	Hash             eth.Hash      `json:"hash"`
+	ParentHash       eth.Hash      `json:"parentHash"`
+	Timestamp        eth.Timestamp `json:"timestamp"`
+	StateRoot        eth.Hash      `json:"stateRoot"`
+	TransactionsRoot eth.Hash      `json:"transactionsRoot"`
+	ReceiptsRoot     eth.Hash      `json:"receiptsRoot"`
+	MixHash          eth.Hash      `json:"mixHash"`
+	GasLimit         eth.Uint64    `json:"gasLimit"`
+	GasUsed          eth.Uint64    `json:"gasUsed"`
 	// Left out for now because we need to actually pull in https://github.com/holiman/uint256
 	// and get a eth.Uint256 wrapper in that is able to properly read those value from a JSON
 	// string like "0x8792c6f47f70f".
@@ -126,12 +126,13 @@ type Block struct {
 	// TotalDifficult *big.Int    `json:"totalDifficulty"`
 	Miner         eth.Address `json:"miner"`
 	Nonce         eth.Hex     `json:"nonce,omitempty"`
-	BloomFilter   eth.Hex     `json:"logsBloom"`
+	LogsBloom     eth.Hex     `json:"logsBloom"`
 	ExtraData     eth.Hex     `json:"extraData"`
 	BaseFeePerGas eth.Uint64  `json:"baseFeePerGas,omitempty"`
 	BlockSize     eth.Uint64  `json:"size,omitempty"`
 	// Left out for now because this is a dynamic type. It's a []eth.Hash value when hydrating
 	// params is sets to `false` and it's a `rpc.TransactionReceipt` when sets to `true`.
 	// Transactions  interface{} `json:"transactions,omitempty"`
-	Uncles []eth.Hash `json:"uncles,omitempty"`
+	UnclesSHA3 eth.Hash   `json:"sha3Uncles,omitempty"`
+	Uncles     []eth.Hash `json:"uncles,omitempty"`
 }

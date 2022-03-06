@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	logging.ApplicationLogger("eth_test", "github.com/streamingfast/eth-go/eth_test")
+	logging.InstantiateLoggers()
 }
 
 func getRPCURL() string {

@@ -199,7 +199,7 @@ func (c *Client) Logs(ctx context.Context, params LogsParams) ([]*LogEntry, erro
 }
 
 func (c *Client) GetBlockByNumber(ctx context.Context, blockNum uint64) (*Block, error) {
-	resp, err := c.DoRequest(ctx, "eth_getBlockByNumber", []interface{}{eth.Uint64(blockNum), nil})
+	resp, err := c.DoRequest(ctx, "eth_getBlockByNumber", []interface{}{eth.Uint64(blockNum), false})
 	if err != nil {
 		return nil, fmt.Errorf("unable to perform eth_getBlockByNumber request: %w", err)
 	}
