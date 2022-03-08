@@ -1,0 +1,3 @@
+[submodule "eth-go/lib/ds-test"]
+	path = eth-go/lib/ds-test
+	url = https://github.com/dapphub/ds-test
