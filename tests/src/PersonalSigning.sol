@@ -27,14 +27,13 @@ contract PersonalSigning {
             abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash);
     }
 
-    function recoverSigner(bytes32 signedMessageHash, bytes memory signature)
-        public
-        pure
-        returns (address)
-    {
+    function recoverSigner(
+        bytes32 signedMessageHashValue,
+        bytes memory signature
+    ) public pure returns (address) {
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
 
-        return ecrecover(signedMessageHash, v, r, s);
+        return ecrecover(signedMessageHashValue, v, r, s);
     }
 
     function splitSignature(bytes memory sig)
