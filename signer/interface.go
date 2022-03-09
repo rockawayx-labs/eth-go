@@ -30,7 +30,13 @@ type Signer interface {
 	// encoding.
 	Sign(nonce uint64, toAddress []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, transactionData []byte) (signedEncodedTrx []byte, err error)
 
+	// SignHash generates the signature for the according message hash. The signature returns is the compact version in the form
+	// `(r, s, v)` where `r` a 32 bytes point, `s` is a second 32 bytes and `v` is the parity bit that will be either `27` or `28`.
 	SignHash(hash eth.Hash) (signature []byte, err error)
+
+	// SignPersonalHash generates the signature for the according message `hash` using the [ERC-712](https://eips.ethereum.org/EIPS/eip-712)
+	// rules which is to hash `specific string`, `length` of message and `message` bytes than sign that element.
+	SignPersonalHash(hash eth.Hash) (signature []byte, err error)
 
 	// Signature generates the right payload for signing, perform the signing operation, extract the signature (v, r, s) and
 	// return them.

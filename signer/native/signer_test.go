@@ -176,6 +176,23 @@ func TestSigner_ParityOdd(t *testing.T) {
 	}
 }
 
+func TestSigner_SignPersonalHash(t *testing.T) {
+	// Private key of public key 0xfffdb7377345371817f2b4dd490319755f5899ec
+	priv, err := eth.NewPrivateKey("db4c20e40f4049efa3c0d3added58dc171ccda274a96a9b9313b305a22841a5d")
+	require.NoError(t, err)
+
+	signer, err := NewPrivateKeySigner(zlog, b1, priv)
+	require.NoError(t, err)
+
+	// This is exercised in `eth-go/tests/src/PersonalSigning.sol` (and `eth-go/tests/src/test/PersonalSigning.sol`) in `testRecoverPersonalSigner`
+	signature, err := signer.SignPersonalHash(eth.MustNewHash("0xcf36ac4f97dc10d91fc2cbb20d718e94a8cbfe0f82eaedc6a4aa38946fb797cd"))
+	require.NoError(t, err)
+	require.Equal(t,
+		"cfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db31b",
+		eth.Hex(signature).String(),
+	)
+}
+
 func bigString(t *testing.T, value string) *big.Int {
 	t.Helper()
 

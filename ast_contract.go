@@ -106,11 +106,11 @@ func createFunctionDefinitionFunc(node map[string]interface{}) (*MethodDef, erro
 	}
 
 	if parameterList, ok := node["parameters"].(map[string]interface{}); ok {
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("parsing function parameters", zap.String("name", f.Name))
 		}
 		f.Parameters = getFunctionParameters(parameterList["parameters"].([]interface{}))
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("function found", zap.String("name", f.Name), zap.Reflect("parameters", f.Parameters))
 		}
 	} else {
@@ -118,11 +118,11 @@ func createFunctionDefinitionFunc(node map[string]interface{}) (*MethodDef, erro
 	}
 
 	if parameterList, ok := node["returnParameters"].(map[string]interface{}); ok {
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("parsing function parameters", zap.String("name", f.Name))
 		}
 		f.ReturnParameters = getFunctionParameters(parameterList["parameters"].([]interface{}))
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("function found", zap.String("name", f.Name), zap.Reflect("parameters", f.Parameters))
 		}
 

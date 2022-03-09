@@ -16,12 +16,6 @@ package rpc
 
 import (
 	"github.com/streamingfast/logging"
-	"go.uber.org/zap"
 )
 
-var traceEnabled = logging.IsTraceEnabled("eth-go", "github.com/streamingfast/eth-go/rpc")
-var zlog = zap.NewNop()
-
-func init() {
-	logging.Register("github.com/streamingfast/eth-go/rpc", &zlog)
-}
+var zlog, tracer = logging.PackageLogger("eth-go", "github.com/streamingfast/eth-go/rpc")

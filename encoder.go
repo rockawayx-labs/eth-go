@@ -58,7 +58,7 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 		return fmt.Errorf("unable to write method in buffer: %w", err)
 	}
 
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("written method name in buffer",
 			zap.Stringer("buf", buffer(e.buffer)),
 			zap.String("method_name", methodSignature),
@@ -90,7 +90,7 @@ func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*Method
 				value:      data[idx],
 			})
 
-			if traceEnabled {
+			if tracer.Enabled() {
 				zlog.Debug("writting placeholder offset in buffer", zap.String("input_type", param.TypeName), zap.Int("input_idx", idx))
 			}
 
@@ -98,7 +98,7 @@ func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*Method
 				return fmt.Errorf("unable to write slice placeholder: %w", err)
 			}
 
-			if traceEnabled {
+			if tracer.Enabled() {
 				zlog.Debug("written slice placeholder in buffer",
 					zap.String("input_type", param.TypeName),
 					zap.Int("input_idx", idx),
@@ -112,7 +112,7 @@ func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*Method
 			return fmt.Errorf("unable to write input.%d %q in buffer: %w", idx, param.TypeName, err)
 		}
 
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("written input data in buffer",
 				zap.Stringer("buf", buffer(e.buffer)),
 				zap.String("input_type", param.TypeName),
@@ -134,7 +134,7 @@ func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*Method
 			return fmt.Errorf("unable to insert slice offset in buffer: %w", err)
 		}
 
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("inserted slice offset in buffer",
 				zap.String("input_type", slc.typeName),
 				zap.Int("slice_idx", sidx),
@@ -146,7 +146,7 @@ func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*Method
 			return fmt.Errorf("unable to write slice in buffer: %w", err)
 		}
 
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("inserted slice in buffer",
 				zap.Stringer("buf", buffer(e.buffer)),
 				zap.String("input_tyewpe", slc.typeName),
@@ -172,7 +172,7 @@ func (e *Encoder) write(typeName string, components []*StructComponent, in inter
 	s := reflect.ValueOf(in)
 	switch s.Kind() {
 	case reflect.Slice:
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("writing length of array", zap.String("typeName", typeName), zap.Int("length", s.Len()))
 		}
 
@@ -181,7 +181,7 @@ func (e *Encoder) write(typeName string, components []*StructComponent, in inter
 			return fmt.Errorf("cannot write slice %s size: %w", typeName, err)
 		}
 
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("writing elements of array", zap.String("typeName", typeName))
 		}
 
@@ -192,7 +192,7 @@ func (e *Encoder) write(typeName string, components []*StructComponent, in inter
 			}
 		}
 
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("ended writing elements of array", zap.String("typeName", typeName))
 		}
 
@@ -202,7 +202,7 @@ func (e *Encoder) write(typeName string, components []*StructComponent, in inter
 }
 
 func (e *Encoder) writeElement(typeName string, components []*StructComponent, in interface{}) error {
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("writing element", zap.String("typeName", typeName), zap.Bool("has_components", len(components) > 0))
 	}
 
@@ -258,7 +258,7 @@ func (e *Encoder) writeElement(typeName string, components []*StructComponent, i
 		return err
 	}
 
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("appending to buffer", zap.String("typeName", typeName), zap.Int("actual_offset", len(e.buffer)), zap.Int("new_offset", len(e.buffer)+len(d)), zap.String("bytes", hex.EncodeToString(d)))
 	}
 	e.buffer = append(e.buffer, d...)
@@ -337,7 +337,7 @@ func (e *Encoder) writeTupleFromStruct(structName string, components []*StructCo
 	for i := 0; i < fieldCount; i++ {
 		field := in.Field(i)
 		if !field.CanInterface() {
-			if traceEnabled {
+			if tracer.Enabled() {
 				zlog.Debug("skipping struct field", zap.String("field", field.Type().Field(i).Name))
 				continue
 			}
@@ -358,7 +358,7 @@ func (e *Encoder) writeTupleFromStruct(structName string, components []*StructCo
 }
 
 func (e *Encoder) writeComponent(structName string, component *StructComponent, in interface{}) error {
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("about to write struct component", zap.Stringer("component", component), zap.String("input_type", fmt.Sprintf("%T", in)))
 	}
 

@@ -503,7 +503,7 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 		return nil, fmt.Errorf("unable to marshal json_rpc requests: %w", err)
 	}
 
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("json_rpc requests", zap.String("requests", string(reqsBytes)))
 	}
 
@@ -539,7 +539,7 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 		return "", fmt.Errorf("unable to marshal json_rpc request: %w", err)
 	}
 
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
@@ -573,7 +573,7 @@ func (c *Client) doRequest(ctx context.Context, body *bytes.Buffer) ([]byte, err
 		return nil, fmt.Errorf("unable to read json_rpc response body: %w", err)
 	}
 
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("json_rpc call response", zap.String("response_body", string(bodyBytes)))
 	}
 	return bodyBytes, nil
@@ -615,7 +615,7 @@ func parseRPCResults(in []byte) ([]*RPCResponse, error) {
 		}
 
 		content := rpcErrorResult.Raw
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Error("json_rpc call response error",
 				zap.String("response_body", string(in)),
 				zap.String("error", content),

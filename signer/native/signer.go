@@ -17,6 +17,7 @@ package native
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/streamingfast/eth-go"
@@ -152,4 +153,21 @@ func (p *PrivateKeySigner) SignHash(hash eth.Hash) (signature []byte, err error)
 	signature[64] = compressedSignature[0]
 
 	return signature, nil
+}
+
+func (p *PrivateKeySigner) SignPersonalHash(hash eth.Hash) (signature []byte, err error) {
+	return p.SignHash(computePersonalMessageHash(hash))
+}
+
+var messagePrefix = []byte("\x19Ethereum Signed Message:\n")
+
+func computePersonalMessageHash(hash eth.Hash) eth.Hash {
+	lengthString := strconv.FormatUint(uint64(len(hash)), 10)
+	data := make([]byte, len(messagePrefix)+len(lengthString)+len(hash))
+
+	copy(data, messagePrefix)
+	copy(data[len(messagePrefix):], []byte(lengthString))
+	copy(data[len(messagePrefix)+len(lengthString):], hash)
+
+	return eth.Keccak256(data)
 }

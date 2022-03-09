@@ -288,7 +288,7 @@ func (d *Decoder) ReadAddress() (out Address, err error) {
 	}
 
 	address := Address(data[12:])
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("read address", zap.Stringer("value", address))
 	}
 
@@ -313,7 +313,7 @@ func (d *Decoder) ReadBigInt() (out *big.Int, err error) {
 }
 
 func (d *Decoder) ReadBuffer(byteCount uint64) ([]byte, error) {
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("trying to read bytes", zap.Uint64("byte_count", byteCount), zap.Uint64("remaining", d.total-d.offset))
 	}
 
@@ -322,7 +322,7 @@ func (d *Decoder) ReadBuffer(byteCount uint64) ([]byte, error) {
 	}
 
 	out := d.buffer[d.offset : d.offset+byteCount]
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("read bytes", zap.Uint64("byte_count", byteCount), zap.String("data", hex.EncodeToString(out)))
 	}
 

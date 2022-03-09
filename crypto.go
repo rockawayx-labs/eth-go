@@ -40,7 +40,11 @@ func NewKeyBag() *KeyBag {
 }
 
 type PublicKey struct {
-	inner ecdsa.PublicKey
+	inner *ecdsa.PublicKey
+}
+
+func NewPublicKeyFromECDSA(key *ecdsa.PublicKey) *PublicKey {
+	return &PublicKey{inner: key}
 }
 
 func (p PublicKey) Address() Address {
@@ -125,7 +129,7 @@ func (p *PrivateKey) UnmarshalJSON(v []byte) (err error) {
 }
 
 func (p *PrivateKey) PublicKey() *PublicKey {
-	return &PublicKey{inner: p.inner.PublicKey}
+	return &PublicKey{inner: &p.inner.PublicKey}
 }
 
 type keccakState interface {
@@ -143,8 +147,8 @@ func Keccak256(data ...[]byte) []byte {
 	return b
 }
 
-func pubkeyToAddress(p ecdsa.PublicKey) Address {
-	if p.X == nil || p.Y == nil {
+func pubkeyToAddress(p *ecdsa.PublicKey) Address {
+	if p == nil || p.X == nil || p.Y == nil {
 		return nil
 	}
 

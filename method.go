@@ -549,7 +549,7 @@ func parseSignature(signature string) (method string, inputs []*MethodParameter,
 	}
 
 	match := matches[0]
-	if traceEnabled {
+	if tracer.Enabled() {
 		zlog.Debug("got a match for signature", zap.Int("count", len(match)), zap.Strings("groups", match))
 	}
 
@@ -584,7 +584,7 @@ func parseParameterList(list string) (out []*MethodParameter) {
 
 	out = make([]*MethodParameter, len(matches))
 	for i, match := range matches {
-		if traceEnabled {
+		if tracer.Enabled() {
 			zlog.Debug("got a match for parameter", zap.Int("count", len(match)), zap.Strings("groups", match))
 		}
 

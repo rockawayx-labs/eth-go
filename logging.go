@@ -16,12 +16,6 @@ package eth
 
 import (
 	"github.com/streamingfast/logging"
-	"go.uber.org/zap"
 )
 
-var traceEnabled = logging.IsTraceEnabled("eth-go", "github.com/streamingfast/eth-go")
-var zlog *zap.Logger
-
-func init() {
-	logging.Register("github.com/streamingfast/eth-go", &zlog)
-}
+var zlog, tracer = logging.PackageLogger("eth-go", "github.com/streamingfast/eth-go")
