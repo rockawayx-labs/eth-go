@@ -18,7 +18,7 @@ import (
 	"math/big"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenAmount_Format(t *testing.T) {

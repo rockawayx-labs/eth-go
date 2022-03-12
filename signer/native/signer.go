@@ -17,17 +17,13 @@ package native
 import (
 	"fmt"
 	"math/big"
-	"strconv"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/streamingfast/eth-go"
 	"github.com/streamingfast/eth-go/rlp"
 	"go.uber.org/zap"
 )
 
 var b2 = big.NewInt(2)
-var b35 = big.NewInt(35)
-var b36 = big.NewInt(36)
 
 // PrivateKeySigner respects EIP-155 signing rules regarding the exacy payload constructed
 // from the Transation data.
@@ -47,8 +43,8 @@ func NewPrivateKeySigner(logger *zap.Logger, chainID *big.Int, privateKey *eth.P
 	}, nil
 }
 
-func (p *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (signedEncodedTrx []byte, err error) {
-	v, r, s, err := p.Signature(nonce, to, value, gasLimit, gasPrice, trxData)
+func (p *PrivateKeySigner) SignTransaction(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (signedEncodedTrx []byte, err error) {
+	v, r, s, err := p.TransactionSignature(nonce, to, value, gasLimit, gasPrice, trxData)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +77,7 @@ func (p *PrivateKeySigner) Sign(nonce uint64, to []byte, value *big.Int, gasLimi
 	return data, nil
 }
 
-func (p *PrivateKeySigner) Signature(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (v, r, s *big.Int, err error) {
+func (p *PrivateKeySigner) TransactionSignature(nonce uint64, to []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, trxData []byte) (v, r, s *big.Int, err error) {
 	p.logger.Debug("signing transaction",
 		zap.Uint64("nonce", nonce),
 		zap.Stringer("to", eth.Address(to)),
@@ -108,66 +104,26 @@ func (p *PrivateKeySigner) Signature(nonce uint64, to []byte, value *big.Int, ga
 	}
 
 	hash := eth.Keccak256(data)
-
-	privKey := (*btcec.PrivateKey)(p.privateKey.ToECDSA())
-	compressedSignature, err := btcec.SignCompact(btcec.S256(), privKey, hash, false)
+	signature, err := p.privateKey.Sign(hash)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("sign compact: %w", err)
 	}
 
-	r = new(big.Int).SetBytes(compressedSignature[1:33])
-	s = new(big.Int).SetBytes(compressedSignature[33:])
+	r = signature.R()
+	s = signature.S()
 
 	// In btcec, a `v` (i.e. byte at [0]) of 27 means the parity value of Y was 0
 	// and if the parity was 1, the value will be 28. In Ethereum EIP-155, we are
-	// looking for ChainID * 2 + 35 if parity is 0 and ChainID * 2 + 36 if parity
+	// looking for V = ChainID * 2 + 35 if parity is 0 and V = ChainID * 2 + 36 if parity
 	// is 1.
 	//
-	// So, we first determined our "fixed" recovery ID either 35 or 36 based on the
-	// btcec `v` value.
-	recoveryFixedID := b35
-	if compressedSignature[0] == 28 {
-		recoveryFixedID = b36
-	}
+	// The lowest value of `V()` is 27, so to reach 35, we need 8,
+	// hence why we do here (V() + 8), so if it's 27, we get 27 + 8 = 35, if 28 we
+	// get 28 + 8 = 36.
+	recoveryFixedID := new(big.Int).SetInt64(int64(signature.V()) + 8)
 
 	// Then we apply the v = ChainID * 2 + {35, 36} math
 	v = new(big.Int).Add(p.chainIDDoubled, recoveryFixedID)
 
 	return v, r, s, nil
-}
-
-func (p *PrivateKeySigner) SignHash(hash eth.Hash) (signature []byte, err error) {
-	privKey := (*btcec.PrivateKey)(p.privateKey.ToECDSA())
-	compressedSignature, err := btcec.SignCompact(btcec.S256(), privKey, hash, false)
-	if err != nil {
-		return nil, fmt.Errorf("sign compact: %w", err)
-	}
-
-	signature = make([]byte, 65)
-	copy(signature, compressedSignature[1:65])
-
-	// In btcec, a `v` (i.e. byte at [0]) of 27 means the parity value of Y was 0
-	// and if the parity was 1. We must send the parity bit as 27 or 28 since
-	// when using `ecrecover` built-in intrinsic, `27` is removed from the value to
-	// determine the parity bit.
-	signature[64] = compressedSignature[0]
-
-	return signature, nil
-}
-
-func (p *PrivateKeySigner) SignPersonalHash(hash eth.Hash) (signature []byte, err error) {
-	return p.SignHash(computePersonalMessageHash(hash))
-}
-
-var messagePrefix = []byte("\x19Ethereum Signed Message:\n")
-
-func computePersonalMessageHash(hash eth.Hash) eth.Hash {
-	lengthString := strconv.FormatUint(uint64(len(hash)), 10)
-	data := make([]byte, len(messagePrefix)+len(lengthString)+len(hash))
-
-	copy(data, messagePrefix)
-	copy(data[len(messagePrefix):], []byte(lengthString))
-	copy(data[len(messagePrefix)+len(lengthString):], hash)
-
-	return eth.Keccak256(data)
 }

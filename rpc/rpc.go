@@ -296,9 +296,9 @@ func (c *Client) ProtocolVersion(ctx context.Context) (string, error) {
 }
 
 type SyncingResp struct {
-	StartingBlockNum uint64 `json:"starting_block_num"`
-	CurrentBlockNum  uint64 `json:"current_block_num"`
-	HighestBlockNum  uint64 `json:"highest_block_num"`
+	StartingBlockNum eth.Uint64 `json:"starting_block_num"`
+	CurrentBlockNum  eth.Uint64 `json:"current_block_num"`
+	HighestBlockNum  eth.Uint64 `json:"highest_block_num"`
 }
 
 func (c *Client) Syncing(ctx context.Context) (*SyncingResp, error) {
@@ -310,21 +310,10 @@ func (c *Client) Syncing(ctx context.Context) (*SyncingResp, error) {
 	if resp == "false" {
 		return nil, ErrFalseResp
 	}
+
 	out := &SyncingResp{}
-
-	out.StartingBlockNum, err = strconv.ParseUint(strings.TrimPrefix(gjson.GetBytes([]byte(resp), "startingBlock").String(), "0x"), 16, 64)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse starting block num %s: %w", resp, err)
-	}
-
-	out.CurrentBlockNum, err = strconv.ParseUint(strings.TrimPrefix(gjson.GetBytes([]byte(resp), "currentBlock").String(), "0x"), 16, 64)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse current block num %s: %w", resp, err)
-	}
-
-	out.HighestBlockNum, err = strconv.ParseUint(strings.TrimPrefix(gjson.GetBytes([]byte(resp), "highestBlock").String(), "0x"), 16, 64)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse current block num %s: %w", resp, err)
+	if err := json.Unmarshal([]byte(resp), out); err != nil {
+		return nil, fmt.Errorf("unmarshal response: %w", err)
 	}
 
 	return out, nil
@@ -589,12 +578,6 @@ func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *ht
 	return c.httpClient.Do(req)
 }
 
-func hex2uint64(hexStr string) uint64 {
-	cleaned := strings.Replace(hexStr, "0x", "", -1)
-	result, _ := strconv.ParseUint(cleaned, 16, 64)
-	return result
-}
-
 func parseRPCResults(in []byte) ([]*RPCResponse, error) {
 	responses := []gjson.Result{}
 
@@ -637,4 +620,10 @@ func parseRPCResults(in []byte) ([]*RPCResponse, error) {
 	})
 
 	return out, nil
+}
+
+func hex2uint64(hexStr string) uint64 {
+	cleaned := strings.Replace(hexStr, "0x", "", -1)
+	result, _ := strconv.ParseUint(cleaned, 16, 64)
+	return result
 }

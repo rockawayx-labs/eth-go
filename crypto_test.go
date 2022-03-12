@@ -31,8 +31,10 @@ func TestPrivateKey_Generate63BytesPrivateKey(t *testing.T) {
 		privKey, err := NewRandomPrivateKey()
 		require.NoError(t, err)
 
-		if len(privKey.inner.D.Bytes()) < 32 {
-			fmt.Printf("D value (Hex %x, Text %s, Bytes %s) has less than 32 bytes\n", privKey.inner.D, privKey.inner.D.Text(10), hex.EncodeToString(privKey.inner.D.Bytes()))
+		ecdsaKey := privKey.inner.ToECDSA()
+
+		if len(ecdsaKey.D.Bytes()) < 32 {
+			fmt.Printf("D value (Hex %x, Text %s, Bytes %s) has less than 32 bytes\n", ecdsaKey.D, ecdsaKey.D.Text(10), hex.EncodeToString(ecdsaKey.D.Bytes()))
 			require.NoError(t, errors.New("bytes < 32"))
 		}
 	}
@@ -214,7 +216,7 @@ func TestPrivateKey_ToECDSA(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, actual, "invalid private for input %q", test.in)
 
-				ecdsaPk := actual.ToECDSA()
+				ecdsaPk := actual.inner.ToECDSA()
 
 				expectedD := test.expectedD
 				if expectedD == "" {
@@ -229,6 +231,20 @@ func TestPrivateKey_ToECDSA(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrivateKeySignPersonal(t *testing.T) {
+	// Private key of public key 0xfffdb7377345371817f2b4dd490319755f5899ec
+	priv, err := NewPrivateKey("db4c20e40f4049efa3c0d3added58dc171ccda274a96a9b9313b305a22841a5d")
+	require.NoError(t, err)
+
+	// This is exercised in `eth-go/tests/src/PersonalSigning.sol` (and `eth-go/tests/src/test/PersonalSigning.sol`) in `testRecoverPersonalSigner`
+	signature, err := priv.SignPersonal(MustNewHex("0xcf36ac4f97dc10d91fc2cbb20d718e94a8cbfe0f82eaedc6a4aa38946fb797cd"))
+	require.NoError(t, err)
+	require.Equal(t,
+		"cfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db31b",
+		signature.ToInverted().String(),
+	)
 }
 
 func TestKeccak256(t *testing.T) {
@@ -264,6 +280,134 @@ func TestKeccak256(t *testing.T) {
 		t.Run(test.in, func(t *testing.T) {
 			out := Keccak256([]byte(test.in))
 			assert.Equal(t, test.expectOut, hex.EncodeToString(out))
+		})
+	}
+}
+
+func TestSignature(t *testing.T) {
+	type args struct {
+		in string
+	}
+
+	type outs struct {
+		R              string
+		S              string
+		V              byte
+		String         string
+		InvertedString string
+	}
+
+	tests := []struct {
+		name      string
+		args      args
+		wantOut   outs
+		assertion require.ErrorAssertionFunc
+	}{
+		{
+			"standard",
+			args{"1bcfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db3"},
+			outs{
+				R:              "cfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b",
+				S:              "2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db3",
+				V:              0x1b,
+				String:         "1bcfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db3",
+				InvertedString: "cfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db31b",
+			},
+			require.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in, err := hex.DecodeString(tt.args.in)
+			require.NoError(t, err)
+
+			gotOut, err := NewSignatureFromBytes(in)
+			tt.assertion(t, err)
+
+			assert.Equal(t, tt.wantOut.R, gotOut.R().Text(16))
+			assert.Equal(t, tt.wantOut.S, gotOut.S().Text(16))
+			assert.Equal(t, tt.wantOut.V, gotOut.V())
+			assert.Equal(t, tt.wantOut.String, gotOut.String())
+
+			inverted := gotOut.ToInverted()
+			assert.Equal(t, tt.wantOut.InvertedString, inverted.String())
+			assert.Equal(t, tt.wantOut.R, inverted.R().Text(16))
+			assert.Equal(t, tt.wantOut.S, inverted.S().Text(16))
+			assert.Equal(t, tt.wantOut.V, inverted.V())
+		})
+	}
+}
+
+// func TestRecoverPersonalSigner(t *testing.T) {
+// 	type args struct {
+// 		signature eth.Hex
+// 		hash      eth.Hash
+// 	}
+
+// 	tests := []struct {
+// 		name    string
+// 		args    args
+// 		want    eth.Address
+// 		wantErr bool
+// 	}{
+// 		{
+// 			"standard",
+// 			args{
+// 				signature: eth.MustNewHex("cfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db31b"),
+// 				hash:      eth.MustNewHash("0xcf36ac4f97dc10d91fc2cbb20d718e94a8cbfe0f82eaedc6a4aa38946fb797cd"),
+// 			},
+// 			eth.MustNewAddress("0xfffdb7377345371817f2b4dd490319755f5899ec"),
+// 			false,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			got, err := RecoverPersonalSigner(tt.args.signature, tt.args.hash)
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("RecoverPersonalSigner() error = %v, wantErr %v", err, tt.wantErr)
+// 				return
+// 			}
+
+// 			if !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("RecoverPersonalSigner() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
+
+func TestSignature_RecoverPersonal(t *testing.T) {
+	type args struct {
+		signingData string
+	}
+
+	tests := []struct {
+		name      string
+		signature string
+		args      args
+		want      string
+		assertion assert.ErrorAssertionFunc
+	}{
+		{
+			"standard",
+			"cfc0c9160c1fbe884f02298b76e194611904a4f18b6814dfd22f95b659b2f90b2564e455543316f125c3c51ec72b22917401d4872ddabb9a7a2d0bea1a827db31b",
+			args{
+				signingData: "0xcf36ac4f97dc10d91fc2cbb20d718e94a8cbfe0f82eaedc6a4aa38946fb797cd",
+			},
+			"0xfffdb7377345371817f2b4dd490319755f5899ec",
+			assert.NoError,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			signatureBytes, err := hex.DecodeString(tt.signature)
+			require.NoError(t, err)
+
+			signature, err := NewInvertedSignatureFromBytes(signatureBytes)
+			require.NoError(t, err)
+
+			got, err := signature.ToSignature().RecoverPersonal(MustNewHex(tt.args.signingData))
+			tt.assertion(t, err)
+			assert.Equal(t, tt.want, got.Pretty())
 		})
 	}
 }

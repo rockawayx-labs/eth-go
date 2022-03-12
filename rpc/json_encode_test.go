@@ -22,7 +22,7 @@ import (
 
 	"github.com/streamingfast/eth-go"
 	"github.com/stretchr/testify/assert"
-	"github.com/test-go/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMarshalJSONRPC(t *testing.T) {

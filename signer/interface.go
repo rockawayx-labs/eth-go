@@ -16,8 +16,6 @@ package signer
 
 import (
 	"math/big"
-
-	"github.com/streamingfast/eth-go"
 )
 
 // Signer is the interface of all implementation that are able to sign message data according to the various
@@ -25,20 +23,12 @@ import (
 //
 // **Important** This interface might change at any time to adjust to new Ethereum rules.
 type Signer interface {
-	// Sign generates the right payload for signing, perform the signing operation, extract the signature (v, r, s) from it then
+	// SignTransaction generates the right payload for signing, perform the signing operation, extract the signature (v, r, s) from it then
 	// complete the standard Ethereum transaction signing process by appending r, s to transaction payload and completing the RLP
 	// encoding.
-	Sign(nonce uint64, toAddress []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, transactionData []byte) (signedEncodedTrx []byte, err error)
+	SignTransaction(nonce uint64, toAddress []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, transactionData []byte) (signedEncodedTrx []byte, err error)
 
-	// SignHash generates the signature for the according message hash. The signature returns is the compact version in the form
-	// `(r, s, v)` where `r` a 32 bytes point, `s` is a second 32 bytes and `v` is the parity bit that will be either `27` or `28`.
-	SignHash(hash eth.Hash) (signature []byte, err error)
-
-	// SignPersonalHash generates the signature for the according message `hash` using the [ERC-712](https://eips.ethereum.org/EIPS/eip-712)
-	// rules which is to hash `specific string`, `length` of message and `message` bytes than sign that element.
-	SignPersonalHash(hash eth.Hash) (signature []byte, err error)
-
-	// Signature generates the right payload for signing, perform the signing operation, extract the signature (v, r, s) and
+	// TransactionSignature generates the right payload for signing, perform the signing operation, extract the signature (v, r, s) and
 	// return them.
-	Signature(nonce uint64, toAddress []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, transactionData []byte) (r, s, v *big.Int, err error)
+	TransactionSignature(nonce uint64, toAddress []byte, value *big.Int, gasLimit uint64, gasPrice *big.Int, transactionData []byte) (r, s, v *big.Int, err error)
 }
