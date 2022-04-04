@@ -40,6 +40,7 @@ var GETH_DETERMINISTIC_ERRORS = []string{
 	"invalid opcode",
 	"stack limit reached 1024",
 	"stack underflow (",
+	"gas uint64 overflow",
 }
 
 const PARITY_BAD_INSTRUCTION_FE = "Bad instruction fe"
