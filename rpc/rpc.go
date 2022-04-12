@@ -17,6 +17,8 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,6 +45,7 @@ type Client struct {
 	chainID *big.Int
 
 	httpClient *http.Client
+	cache      Cache
 }
 
 func NewClient(url string, opts ...Option) *Client {
@@ -62,6 +65,17 @@ func NewClient(url string, opts ...Option) *Client {
 func WithHttpClient(httpClient *http.Client) Option {
 	return func(client *Client) {
 		client.httpClient = httpClient
+	}
+}
+
+type Cache interface {
+	Set(ctx context.Context, key string, response []byte)
+	Get(ctx context.Context, key string) (data []byte, found bool)
+}
+
+func WithCache(cache Cache) Option {
+	return func(client *Client) {
+		client.cache = cache
 	}
 }
 
@@ -491,12 +505,12 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal json_rpc requests: %w", err)
 	}
-
 	if tracer.Enabled() {
 		zlog.Debug("json_rpc requests", zap.String("requests", string(reqsBytes)))
 	}
 
-	resp, err := c.doRequest(ctx, bytes.NewBuffer(reqsBytes))
+	cacheKey := hex.EncodeToString(sha256.New().Sum(reqsBytes))
+	resp, err := c.doRequest(ctx, reqsBytes, cacheKey)
 	if err != nil {
 		return nil, err
 	}
@@ -509,8 +523,16 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 		zlog.Warn("invalid number of results", zap.Int("len_results", len(results)), zap.Int("len_reqs", len(reqs)))
 		return nil, fmt.Errorf("invalid number of results")
 	}
+
+	deterministic := true
 	for i, req := range reqs {
 		results[i].decoder = req.decoder
+		if !results[i].Deterministic() {
+			deterministic = false
+		}
+	}
+	if c.cache != nil && deterministic {
+		c.cache.Set(ctx, cacheKey, resp)
 	}
 
 	return results, nil
@@ -532,7 +554,9 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 		zlog.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
-	resp, err := c.doRequest(ctx, bytes.NewBuffer(reqCnt))
+	cacheKey := hex.EncodeToString(sha256.New().Sum(reqCnt))
+
+	resp, err := c.doRequest(ctx, reqCnt, cacheKey)
 	if err != nil {
 		return "", err
 	}
@@ -544,10 +568,24 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 	if len(results) != 1 {
 		return "", fmt.Errorf("received no result than number of requests")
 	}
+
+	if c.cache != nil && results[0].Deterministic() {
+		c.cache.Set(ctx, cacheKey, resp)
+	}
+
 	return results[0].Content, results[0].Err
 }
 
-func (c *Client) doRequest(ctx context.Context, body *bytes.Buffer) ([]byte, error) {
+func (c *Client) doRequest(ctx context.Context, reqsBytes []byte, cacheKey string) ([]byte, error) {
+	if c.cache != nil {
+		cachedData, found := c.cache.Get(ctx, cacheKey)
+		if found {
+			return cachedData, nil
+		}
+	}
+
+	body := bytes.NewBuffer(reqsBytes)
+
 	resp, err := c.post(ctx, c.URL, body)
 	if err != nil {
 		return nil, fmt.Errorf("sending request to json_rpc endpoint: %w", err)
