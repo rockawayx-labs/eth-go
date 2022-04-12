@@ -15,6 +15,7 @@
 package eth
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,6 +30,10 @@ func ParseABI(abiFilePath string) (*ABI, error) {
 	defer file.Close()
 
 	return parseABIFromReader(file)
+}
+
+func ParseABIFromBytes(content []byte) (*ABI, error) {
+	return parseABIFromReader(bytes.NewBuffer(content))
 }
 
 func parseABIFromReader(reader io.Reader) (*ABI, error) {
