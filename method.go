@@ -201,14 +201,22 @@ func (f *MethodDef) DecodeOutputFromString(data string) ([]interface{}, error) {
 	return decoder.ReadOutput(f.ReturnParameters)
 }
 
-func (f *MethodDef) DecodeToObjectFromString(data string) (out map[string]interface{}, err error) {
-	if len(f.ReturnParameters) == 0 {
-		return nil, fmt.Errorf("no return parameters defined for method")
-	}
+func (f *MethodDef) DecodeToObjectFromBytes(data []byte) (out map[string]interface{}, err error) {
+	return f.DecodeToObjectFromDecoder(NewDecoder(data))
+}
 
+func (f *MethodDef) DecodeToObjectFromString(data string) (out map[string]interface{}, err error) {
 	decoder, err := NewDecoderFromString(data)
 	if err != nil {
 		return nil, fmt.Errorf("data is not a valid hexadecimal value")
+	}
+
+	return f.DecodeToObjectFromDecoder(decoder)
+}
+
+func (f *MethodDef) DecodeToObjectFromDecoder(decoder *Decoder) (out map[string]interface{}, err error) {
+	if len(f.ReturnParameters) == 0 {
+		return nil, fmt.Errorf("no return parameters defined for method")
 	}
 
 	values, err := decoder.ReadOutput(f.ReturnParameters)
