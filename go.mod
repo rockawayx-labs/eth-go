@@ -3,7 +3,7 @@ module github.com/streamingfast/eth-go
 go 1.16
 
 require (
-	github.com/btcsuite/btcd/btcec/v2 v2.1.1
+	github.com/btcsuite/btcd/btcec/v2 v2.1.3
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
