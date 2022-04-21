@@ -20,15 +20,42 @@ func BlockNumber(number uint64) *BlockRef {
 	return &BlockRef{tag: "", value: number}
 }
 
+func (b *BlockRef) IsLatest() bool {
+	return b == LatestBlock || b.tag == LatestBlock.tag
+}
+
+func (b *BlockRef) IsEarliest() bool {
+	return b == EarliestBlock || b.tag == EarliestBlock.tag
+}
+
+func (b *BlockRef) IsPending() bool {
+	return b == PendingBlock || b.tag == PendingBlock.tag
+}
+
+func (b *BlockRef) BlockNumber() (number uint64, ok bool) {
+	if b.tag != "" {
+		return 0, false
+	}
+
+	return b.value, true
+}
+
 func (b *BlockRef) UnmarshalText(text []byte) error {
 	lowerTextString := strings.ToLower(string(text))
-	switch lowerTextString {
-	case "latest":
+
+	if lowerTextString == LatestBlock.tag {
 		*b = *LatestBlock
-	case "pending":
-		*b = *PendingBlock
-	case "earliest":
+		return nil
+	}
+
+	if lowerTextString == EarliestBlock.tag {
 		*b = *EarliestBlock
+		return nil
+	}
+
+	if lowerTextString == PendingBlock.tag {
+		*b = *PendingBlock
+		return nil
 	}
 
 	var value eth.Uint64

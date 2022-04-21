@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/streamingfast/eth-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewTopicFilter(t *testing.T) {
@@ -60,4 +62,167 @@ func topic(in string) (out *eth.Topic) {
 	var bytes [32]byte
 	copy(bytes[:], eth.MustNewHash(in))
 	return (*eth.Topic)(&bytes)
+}
+
+func TestBlockRef_UnmarshalText(t *testing.T) {
+	type args struct {
+		text string
+	}
+	tests := []struct {
+		name      string
+		args      args
+		expected  *BlockRef
+		assertion require.ErrorAssertionFunc
+	}{
+		{"latest all lower case", args{"latest"}, LatestBlock, require.NoError},
+		{"latest mixed case", args{"laTesT"}, LatestBlock, require.NoError},
+		{"latest all upper case", args{"LATEST"}, LatestBlock, require.NoError},
+
+		{"earliest all lower case", args{"earliest"}, EarliestBlock, require.NoError},
+		{"earliest mixed case", args{"EarliesT"}, EarliestBlock, require.NoError},
+		{"earliest all upper case", args{"EARLIEST"}, EarliestBlock, require.NoError},
+
+		{"pending all lower case", args{"pending"}, PendingBlock, require.NoError},
+		{"pending mixed case", args{"pEndIng"}, PendingBlock, require.NoError},
+		{"pending all upper case", args{"PENDING"}, PendingBlock, require.NoError},
+
+		{"block number decimal zero", args{"0"}, BlockNumber(0), require.NoError},
+		{"block number decimal value", args{"112"}, BlockNumber(112), require.NoError},
+
+		{"block number hexadecimal empty", args{"0x"}, BlockNumber(0), require.NoError},
+		{"block number hexadecimal zero", args{"0x0"}, BlockNumber(0), require.NoError},
+		{"block number hexadecimal zero", args{"0x0"}, BlockNumber(0), require.NoError},
+		{"block number hexadecimal value", args{"0x123"}, BlockNumber(291), require.NoError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &BlockRef{}
+			tt.assertion(t, b.UnmarshalText([]byte(tt.args.text)))
+
+			assert.Equal(t, tt.expected, b)
+		})
+	}
+}
+
+func TestBlockRef_IsLatest(t *testing.T) {
+	latest, earliest, pending := blockRefFromUnmarshal(t)
+
+	tests := []struct {
+		name string
+		ref  *BlockRef
+		want bool
+	}{
+		{"latest from cached one", LatestBlock, true},
+		{"latest from marshalled", latest, true},
+
+		{"not latest when earliest from cached one", EarliestBlock, false},
+		{"not latest when earliest from marshalled", earliest, false},
+
+		{"not latest when pending from cached one", PendingBlock, false},
+		{"not latest when pending from marshalled", pending, false},
+
+		{"not latest when block number", BlockNumber(10), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.ref.IsLatest())
+		})
+	}
+}
+
+func TestBlockRef_IsEarliest(t *testing.T) {
+	latest, earliest, pending := blockRefFromUnmarshal(t)
+
+	tests := []struct {
+		name string
+		ref  *BlockRef
+		want bool
+	}{
+		{"earliest from cached one", EarliestBlock, true},
+		{"earliest from marshalled", earliest, true},
+
+		{"not earliest when latest from cached one", LatestBlock, false},
+		{"not earliest when latest from marshalled", latest, false},
+
+		{"not earliest when pending from cached one", PendingBlock, false},
+		{"not earliest when pending from marshalled", pending, false},
+
+		{"not earliest when block number", BlockNumber(10), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.ref.IsEarliest())
+		})
+	}
+}
+
+func TestBlockRef_IsPending(t *testing.T) {
+	latest, earliest, pending := blockRefFromUnmarshal(t)
+
+	tests := []struct {
+		name string
+		ref  *BlockRef
+		want bool
+	}{
+		{"pending from cached one", PendingBlock, true},
+		{"pending from marshalled", pending, true},
+
+		{"not pending when latest from cached one", LatestBlock, false},
+		{"not pending when latest from marshalled", latest, false},
+
+		{"not pending when earliest from cached one", EarliestBlock, false},
+		{"not pending when earliest from marshalled", earliest, false},
+
+		{"not pending when block number", BlockNumber(10), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.ref.IsPending())
+		})
+	}
+}
+
+func TestBlockRef_BlockNumber(t *testing.T) {
+	latest, earliest, pending := blockRefFromUnmarshal(t)
+
+	tests := []struct {
+		name       string
+		ref        *BlockRef
+		wantNumber uint64
+		wantOk     bool
+	}{
+		{"not block number when latest from cached one", LatestBlock, 0, false},
+		{"not block number when latest from marshalled", latest, 0, false},
+
+		{"not block number when earliest from cached one", EarliestBlock, 0, false},
+		{"not block number when earliest from marshalled", earliest, 0, false},
+
+		{"not block number when pending from cached one", PendingBlock, 0, false},
+		{"not block number when pending from marshalled", pending, 0, false},
+
+		{"block number", BlockNumber(10), 10, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualNum, actualOk := tt.ref.BlockNumber()
+
+			assert.Equal(t, tt.wantNumber, actualNum)
+			assert.Equal(t, tt.wantOk, actualOk)
+		})
+	}
+}
+
+func blockRefFromUnmarshal(t *testing.T) (*BlockRef, *BlockRef, *BlockRef) {
+	t.Helper()
+
+	latest := &BlockRef{}
+	require.NoError(t, latest.UnmarshalText([]byte("latest")))
+
+	earliest := &BlockRef{}
+	require.NoError(t, earliest.UnmarshalText([]byte("earliest")))
+
+	pending := &BlockRef{}
+	require.NoError(t, pending.UnmarshalText([]byte("pending")))
+
+	return latest, earliest, pending
 }
