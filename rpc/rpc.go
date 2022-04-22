@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/streamingfast/eth-go"
+	"github.com/streamingfast/logging"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
 )
@@ -66,11 +67,6 @@ func WithHttpClient(httpClient *http.Client) Option {
 	return func(client *Client) {
 		client.httpClient = httpClient
 	}
-}
-
-type Cache interface {
-	Set(ctx context.Context, key string, response []byte)
-	Get(ctx context.Context, key string) (data []byte, found bool)
 }
 
 func WithCache(cache Cache) Option {
@@ -492,6 +488,8 @@ func (c *ETHCall) ToRequest() *RPCRequest {
 type ResponseDecoder func([]byte) ([]interface{}, error)
 
 func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResponse, error) {
+	logger := logging.Logger(ctx, zlog).With(zap.Strings("methods", methodsFromRPCRequests(reqs)))
+
 	// sanitize reqs
 	var lastID int
 	// we need IDs to be sorted
@@ -506,39 +504,50 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 		return nil, fmt.Errorf("unable to marshal json_rpc requests: %w", err)
 	}
 	if tracer.Enabled() {
-		zlog.Debug("json_rpc requests", zap.String("requests", string(reqsBytes)))
+		logger.Debug("json_rpc requests", zap.Stringer("requests", eth.Hex(reqsBytes)))
 	}
 
-	cacheKey := hex.EncodeToString(sha256.New().Sum(reqsBytes))
-	resp, err := c.doRequest(ctx, reqsBytes, cacheKey)
+	var cacheKey string
+	if c.cache != nil {
+		cacheKey = hex.EncodeToString(sha256.New().Sum(reqsBytes))
+	}
+
+	resp, err := c.doRequest(ctx, logger, reqsBytes, cacheKey)
 	if err != nil {
 		return nil, err
 	}
 
-	results, err := parseRPCResults(resp)
+	results, err := parseRPCResults(logger, resp)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(results) != len(reqs) {
-		zlog.Warn("invalid number of results", zap.Int("len_results", len(results)), zap.Int("len_reqs", len(reqs)))
+		logger.Warn("invalid number of results", zap.Int("len_results", len(results)), zap.Int("len_reqs", len(reqs)))
 		return nil, fmt.Errorf("invalid number of results")
 	}
 
-	deterministic := true
-	for i, req := range reqs {
-		results[i].decoder = req.decoder
-		if !results[i].Deterministic() {
-			deterministic = false
+	if c.cache != nil {
+		deterministic := true
+		for i, req := range reqs {
+			results[i].decoder = req.decoder
+			if !results[i].Deterministic() {
+				deterministic = false
+				break
+			}
 		}
-	}
-	if c.cache != nil && deterministic {
-		c.cache.Set(ctx, cacheKey, resp)
+
+		if deterministic {
+			c.cache.Set(ctx, cacheKey, resp)
+		}
 	}
 
 	return results, nil
 }
 
 func (c *Client) DoRequest(ctx context.Context, method string, params []interface{}) (string, error) {
+	logger := logging.Logger(ctx, zlog).With(zap.String("method", method))
+
 	req := RPCRequest{
 		Params:  params,
 		JSONRPC: "2.0",
@@ -551,17 +560,17 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 	}
 
 	if tracer.Enabled() {
-		zlog.Debug("json_rpc request", zap.String("request", string(reqCnt)))
+		logger.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
 	cacheKey := hex.EncodeToString(sha256.New().Sum(reqCnt))
 
-	resp, err := c.doRequest(ctx, reqCnt, cacheKey)
+	resp, err := c.doRequest(ctx, logger, reqCnt, cacheKey)
 	if err != nil {
 		return "", err
 	}
 
-	results, err := parseRPCResults(resp)
+	results, err := parseRPCResults(logger, resp)
 	if err != nil {
 		return "", err
 	}
@@ -576,10 +585,14 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 	return results[0].Content, results[0].Err
 }
 
-func (c *Client) doRequest(ctx context.Context, reqsBytes []byte, cacheKey string) ([]byte, error) {
+func (c *Client) doRequest(ctx context.Context, logger *zap.Logger, reqsBytes []byte, cacheKey string) ([]byte, error) {
 	if c.cache != nil {
 		cachedData, found := c.cache.Get(ctx, cacheKey)
 		if found {
+			if tracer.Enabled() {
+				logger.Debug("retrieve request's response from cache", zap.String("key", cacheKey))
+			}
+
 			return cachedData, nil
 		}
 	}
@@ -601,8 +614,9 @@ func (c *Client) doRequest(ctx context.Context, reqsBytes []byte, cacheKey strin
 	}
 
 	if tracer.Enabled() {
-		zlog.Debug("json_rpc call response", zap.String("response_body", string(bodyBytes)))
+		logger.Debug("json_rpc call response", zap.String("response_body", string(bodyBytes)))
 	}
+
 	return bodyBytes, nil
 }
 
@@ -616,7 +630,7 @@ func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *ht
 	return c.httpClient.Do(req)
 }
 
-func parseRPCResults(in []byte) ([]*RPCResponse, error) {
+func parseRPCResults(logger *zap.Logger, in []byte) ([]*RPCResponse, error) {
 	responses := []gjson.Result{}
 
 	// we may receive `[{resp1},{resp2}]` OR `{resp}`
@@ -637,7 +651,7 @@ func parseRPCResults(in []byte) ([]*RPCResponse, error) {
 
 		content := rpcErrorResult.Raw
 		if tracer.Enabled() {
-			zlog.Error("json_rpc call response error",
+			logger.Error("json_rpc call response error",
 				zap.String("response_body", string(in)),
 				zap.String("error", content),
 			)
@@ -658,6 +672,15 @@ func parseRPCResults(in []byte) ([]*RPCResponse, error) {
 	})
 
 	return out, nil
+}
+
+func methodsFromRPCRequests(requests []*RPCRequest) (out []string) {
+	out = make([]string, len(requests))
+	for i, v := range requests {
+		out[i] = v.Method
+	}
+
+	return
 }
 
 func hex2uint64(hexStr string) uint64 {
