@@ -523,7 +523,7 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 	}
 
 	if len(results) != len(reqs) {
-		logger.Warn("invalid number of results", zap.Int("len_results", len(results)), zap.Int("len_reqs", len(reqs)))
+		logger.Warn("invalid number of results", zap.Int("result_count", len(results)), zap.Int("request_count", len(reqs)))
 		return nil, fmt.Errorf("invalid number of results")
 	}
 
@@ -642,16 +642,21 @@ func parseRPCResults(logger *zap.Logger, in []byte) ([]*RPCResponse, error) {
 	}
 
 	var out []*RPCResponse
-	for _, response := range responses {
+	for i, response := range responses {
 		rpcErrorResult := response.Get("error")
 		if !rpcErrorResult.Exists() {
-			out = append(out, &RPCResponse{Content: response.Get("result").String(), ID: int(hex2uint64(response.Get("id").String()))})
+			id, err := parseResponseID(response, i)
+			if err != nil {
+				return nil, err
+			}
+
+			out = append(out, &RPCResponse{Content: response.Get("result").String(), ID: int(id)})
 			continue
 		}
 
 		content := rpcErrorResult.Raw
 		if tracer.Enabled() {
-			logger.Error("json_rpc call response error",
+			logger.Debug("json_rpc call response error",
 				zap.String("response_body", string(in)),
 				zap.String("error", content),
 			)
@@ -664,7 +669,12 @@ func parseRPCResults(logger *zap.Logger, in []byte) ([]*RPCResponse, error) {
 			return nil, fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
 		}
 
-		out = append(out, &RPCResponse{Err: rpcErr, ID: int(hex2uint64(response.Get("id").String()))})
+		id, err := parseResponseID(response, i)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, &RPCResponse{Err: rpcErr, ID: id})
 	}
 
 	sort.Slice(out, func(i, j int) bool {
@@ -683,8 +693,13 @@ func methodsFromRPCRequests(requests []*RPCRequest) (out []string) {
 	return
 }
 
-func hex2uint64(hexStr string) uint64 {
-	cleaned := strings.Replace(hexStr, "0x", "", -1)
-	result, _ := strconv.ParseUint(cleaned, 16, 64)
-	return result
+func parseResponseID(result gjson.Result, requestIndex int) (int, error) {
+	idValue := result.Get("id").String()
+
+	var id eth.Uint64
+	if err := id.UnmarshalText([]byte(idValue)); err != nil {
+		return 0, fmt.Errorf("json_rpc invalid id value %q for request at index %d: %s", idValue, requestIndex, err)
+	}
+
+	return int(id), nil
 }
