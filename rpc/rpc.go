@@ -42,17 +42,17 @@ type Option func(*Client)
 
 // TODO: refactor to use mux rpc
 type Client struct {
-	URL     string
-	chainID *big.Int
+	endpoints     []string
+	endpointIndex int
+	chainID       *big.Int
 
 	httpClient *http.Client
 	cache      Cache
 }
 
-func NewClient(url string, opts ...Option) *Client {
-	c := &Client{
-		URL: url,
-	}
+func NewClient(endpointURL string, opts ...Option) *Client {
+	c := &Client{}
+	c.endpoints = append(c.endpoints, endpointURL)
 
 	c.httpClient = http.DefaultClient
 
@@ -66,6 +66,12 @@ func NewClient(url string, opts ...Option) *Client {
 func WithHttpClient(httpClient *http.Client) Option {
 	return func(client *Client) {
 		client.httpClient = httpClient
+	}
+}
+
+func WithSecondaryEndpoints(urls []string) Option {
+	return func(client *Client) {
+		client.endpoints = append(client.endpoints, urls...)
 	}
 }
 
@@ -599,17 +605,20 @@ func (c *Client) doRequest(ctx context.Context, logger *zap.Logger, reqsBytes []
 
 	body := bytes.NewBuffer(reqsBytes)
 
-	resp, err := c.post(ctx, c.URL, body)
+	resp, err := c.post(ctx, c.endpoints[c.endpointIndex], body)
 	if err != nil {
+		c.RollEndpointIndex()
 		return nil, fmt.Errorf("sending request to json_rpc endpoint: %w", err)
 	}
 	if resp.StatusCode >= 400 {
+		c.RollEndpointIndex()
 		return nil, fmt.Errorf("error in response: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		c.RollEndpointIndex()
 		return nil, fmt.Errorf("unable to read json_rpc response body: %w", err)
 	}
 
@@ -618,6 +627,21 @@ func (c *Client) doRequest(ctx context.Context, logger *zap.Logger, reqsBytes []
 	}
 
 	return bodyBytes, nil
+}
+
+func (c *Client) RollEndpointIndex() {
+	if len(c.endpoints) <= 1 {
+		zlog.Info("cannot roll endpoint, only 1 provided")
+		return
+	}
+
+	if c.endpointIndex == len(c.endpoints)-1 {
+		c.endpointIndex = 0
+		zlog.Info("rolled endpoints", zap.String("endpoint", c.endpoints[c.endpointIndex]))
+		return
+	}
+	c.endpointIndex++
+	zlog.Info("rolled endpoints", zap.String("endpoint", c.endpoints[c.endpointIndex]))
 }
 
 func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *http.Response, err error) {
