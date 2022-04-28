@@ -17,8 +17,6 @@ package rpc
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,17 +40,16 @@ type Option func(*Client)
 
 // TODO: refactor to use mux rpc
 type Client struct {
-	endpoints     []string
-	endpointIndex int
-	chainID       *big.Int
+	endpoint string
+	chainID  *big.Int
 
 	httpClient *http.Client
-	cache      Cache
 }
 
 func NewClient(endpointURL string, opts ...Option) *Client {
-	c := &Client{}
-	c.endpoints = append(c.endpoints, endpointURL)
+	c := &Client{
+		endpoint: endpointURL,
+	}
 
 	c.httpClient = http.DefaultClient
 
@@ -66,18 +63,6 @@ func NewClient(endpointURL string, opts ...Option) *Client {
 func WithHttpClient(httpClient *http.Client) Option {
 	return func(client *Client) {
 		client.httpClient = httpClient
-	}
-}
-
-func WithSecondaryEndpoints(urls []string) Option {
-	return func(client *Client) {
-		client.endpoints = append(client.endpoints, urls...)
-	}
-}
-
-func WithCache(cache Cache) Option {
-	return func(client *Client) {
-		client.cache = cache
 	}
 }
 
@@ -513,12 +498,7 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 		logger.Debug("json_rpc requests", zap.Stringer("requests", eth.Hex(reqsBytes)))
 	}
 
-	var cacheKey string
-	if c.cache != nil {
-		cacheKey = hex.EncodeToString(sha256.New().Sum(reqsBytes))
-	}
-
-	resp, err := c.doRequest(ctx, logger, reqsBytes, cacheKey)
+	resp, err := c.doRequest(ctx, logger, reqsBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -531,21 +511,6 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 	if len(results) != len(reqs) {
 		logger.Warn("invalid number of results", zap.Int("result_count", len(results)), zap.Int("request_count", len(reqs)))
 		return nil, fmt.Errorf("invalid number of results")
-	}
-
-	if c.cache != nil {
-		deterministic := true
-		for i, req := range reqs {
-			results[i].decoder = req.decoder
-			if !results[i].Deterministic() {
-				deterministic = false
-				break
-			}
-		}
-
-		if deterministic {
-			c.cache.Set(ctx, cacheKey, resp)
-		}
 	}
 
 	return results, nil
@@ -569,9 +534,7 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 		logger.Debug("json_rpc request", zap.String("request", string(reqCnt)))
 	}
 
-	cacheKey := hex.EncodeToString(sha256.New().Sum(reqCnt))
-
-	resp, err := c.doRequest(ctx, logger, reqCnt, cacheKey)
+	resp, err := c.doRequest(ctx, logger, reqCnt)
 	if err != nil {
 		return "", err
 	}
@@ -584,41 +547,23 @@ func (c *Client) DoRequest(ctx context.Context, method string, params []interfac
 		return "", fmt.Errorf("received no result than number of requests")
 	}
 
-	if c.cache != nil && results[0].Deterministic() {
-		c.cache.Set(ctx, cacheKey, resp)
-	}
-
 	return results[0].Content, results[0].Err
 }
 
-func (c *Client) doRequest(ctx context.Context, logger *zap.Logger, reqsBytes []byte, cacheKey string) ([]byte, error) {
-	if c.cache != nil {
-		cachedData, found := c.cache.Get(ctx, cacheKey)
-		if found {
-			if tracer.Enabled() {
-				logger.Debug("retrieve request's response from cache", zap.String("key", cacheKey))
-			}
-
-			return cachedData, nil
-		}
-	}
-
+func (c *Client) doRequest(ctx context.Context, logger *zap.Logger, reqsBytes []byte) ([]byte, error) {
 	body := bytes.NewBuffer(reqsBytes)
 
-	resp, err := c.post(ctx, c.endpoints[c.endpointIndex], body)
+	resp, err := c.post(ctx, c.endpoint, body)
 	if err != nil {
-		c.RollEndpointIndex()
 		return nil, fmt.Errorf("sending request to json_rpc endpoint: %w", err)
 	}
 	if resp.StatusCode >= 400 {
-		c.RollEndpointIndex()
 		return nil, fmt.Errorf("error in response: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		c.RollEndpointIndex()
 		return nil, fmt.Errorf("unable to read json_rpc response body: %w", err)
 	}
 
@@ -627,21 +572,6 @@ func (c *Client) doRequest(ctx context.Context, logger *zap.Logger, reqsBytes []
 	}
 
 	return bodyBytes, nil
-}
-
-func (c *Client) RollEndpointIndex() {
-	if len(c.endpoints) <= 1 {
-		zlog.Info("cannot roll endpoint, only 1 provided")
-		return
-	}
-
-	if c.endpointIndex == len(c.endpoints)-1 {
-		c.endpointIndex = 0
-		zlog.Info("rolled endpoints", zap.String("endpoint", c.endpoints[c.endpointIndex]))
-		return
-	}
-	c.endpointIndex++
-	zlog.Info("rolled endpoints", zap.String("endpoint", c.endpoints[c.endpointIndex]))
 }
 
 func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *http.Response, err error) {
