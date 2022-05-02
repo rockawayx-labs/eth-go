@@ -584,6 +584,10 @@ func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *ht
 	return c.httpClient.Do(req)
 }
 
+func (c *Client) String() string {
+	return c.endpoint
+}
+
 func parseRPCResults(logger *zap.Logger, in []byte) ([]*RPCResponse, error) {
 	responses := []gjson.Result{}
 
