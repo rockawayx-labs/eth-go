@@ -41,6 +41,7 @@ var GETH_DETERMINISTIC_ERRORS = []string{
 	"stack limit reached 1024",
 	"stack underflow (",
 	"gas uint64 overflow",
+	"out of gas",
 }
 
 const PARITY_BAD_INSTRUCTION_FE = "Bad instruction fe"
