@@ -2,7 +2,6 @@ package eth_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -21,12 +20,12 @@ func ExampleRPC_GetBlockByNumber() {
 		}
 	}
 
-	result, err := client.GetBlockByNumber(context.Background(), blockNumber)
+	result, err := client.GetBlockByNumber(context.Background(), blockNumber, rpc.WithGetBlockFullTransaction())
 	if err != nil {
 		panic(fmt.Errorf("get block by number %d: %w", blockNumber, err))
 	}
 
-	bytes, err := json.Marshal(result)
+	bytes, err := rpc.MarshalJSONRPC(result)
 	if err != nil {
 		panic(fmt.Errorf("json marshal response: %w", err))
 	}

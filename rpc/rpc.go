@@ -199,10 +199,49 @@ func (c *Client) Logs(ctx context.Context, params LogsParams) ([]*LogEntry, erro
 	return logs, nil
 }
 
-func (c *Client) GetBlockByNumber(ctx context.Context, blockNum uint64) (*Block, error) {
-	resp, err := c.DoRequest(ctx, "eth_getBlockByNumber", []interface{}{eth.Uint64(blockNum), false})
+type getBlockOptions struct {
+	full bool
+}
+
+type GetBlockOption interface {
+	apply(opt *getBlockOptions)
+}
+
+type withGetBlockFullTransaction bool
+
+func (v withGetBlockFullTransaction) apply(opt *getBlockOptions) {
+	opt.full = bool(v)
+}
+
+func WithGetBlockFullTransaction() GetBlockOption {
+	return withGetBlockFullTransaction(true)
+}
+
+// GetBlockByNumber fetches the block by its number and optionally include full transaction receipts
+// if you supply the `rpc.withGetBlockFullTransaction` option.
+//
+// Uses RPC call `eth_getBlockByNumber`
+func (c *Client) GetBlockByNumber(ctx context.Context, blockNum uint64, opts ...GetBlockOption) (*Block, error) {
+	return c.getBlock(ctx, "eth_getBlockByNumber", eth.Uint64(blockNum), opts)
+}
+
+// GetBlockByHash fetches the block by its hash and optionally include full transaction receipts
+// if you supply the `rpc.withGetBlockFullTransaction` option.
+//
+// Uses RPC call `eth_getBlockByHash`.
+func (c *Client) GetBlockByHash(ctx context.Context, hash eth.Hash, opts ...GetBlockOption) (*Block, error) {
+	return c.getBlock(ctx, "eth_getBlockByHash", hash, opts)
+}
+
+func (c *Client) getBlock(ctx context.Context, method string, identifier interface{}, opts []GetBlockOption) (*Block, error) {
+	var options getBlockOptions
+	for _, opt := range opts {
+		opt.apply(&options)
+	}
+
+	resp, err := c.DoRequest(ctx, method, []interface{}{identifier, options.full})
 	if err != nil {
-		return nil, fmt.Errorf("unable to perform eth_getBlockByNumber request: %w", err)
+		return nil, fmt.Errorf("unable to perform %s request: %w", method, err)
 	}
 
 	var block *Block

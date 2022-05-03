@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/holiman/uint256"
 )
 
 type Uint8 uint8
@@ -71,6 +73,20 @@ func (b *Uint64) UnmarshalText(text []byte) error {
 
 	*b = Uint64(value)
 	return nil
+}
+
+type Uint256 uint256.Int
+
+func (b *Uint256) UnmarshalText(text []byte) error {
+	return (*uint256.Int)(b).UnmarshalText(text)
+}
+
+func (b *Uint256) MarshalText() ([]byte, error) {
+	return (*uint256.Int)(b).MarshalText()
+}
+
+func (b *Uint256) MarshalJSONRPC() ([]byte, error) {
+	return []byte(`"` + (*uint256.Int)(b).Hex() + `"`), nil
 }
 
 // Timestamp represents a timestamp value on the Ethereum chain always in UTC
@@ -411,4 +427,25 @@ func padToTopic(in []byte) (out *Topic) {
 	copy(topic[startOffset:], in)
 
 	return &topic
+}
+
+//go:generate go-enum -f=$GOFILE --noprefix --prefix TxType --lower --names
+
+//
+// ENUM(
+//   Legacy
+//   AccessList
+//   DynamicFee
+// )
+//
+type TransactionType uint8
+
+func (b *TransactionType) UnmarshalText(text []byte) error {
+	value, err := parseUint(string(text), 8)
+	if err != nil {
+		return err
+	}
+
+	*b = TransactionType(value)
+	return nil
 }
