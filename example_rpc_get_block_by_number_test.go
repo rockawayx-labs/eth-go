@@ -33,5 +33,4 @@ func ExampleRPC_GetBlockByNumber() {
 	}
 
 	fmt.Println(string(bytes))
-	// Output: test
 }
