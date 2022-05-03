@@ -221,8 +221,8 @@ func WithGetBlockFullTransaction() GetBlockOption {
 // if you supply the `rpc.withGetBlockFullTransaction` option.
 //
 // Uses RPC call `eth_getBlockByNumber`
-func (c *Client) GetBlockByNumber(ctx context.Context, blockNum uint64, opts ...GetBlockOption) (*Block, error) {
-	return c.getBlock(ctx, "eth_getBlockByNumber", eth.Uint64(blockNum), opts)
+func (c *Client) GetBlockByNumber(ctx context.Context, ref *BlockRef, opts ...GetBlockOption) (*Block, error) {
+	return c.getBlock(ctx, "eth_getBlockByNumber", ref, opts)
 }
 
 // GetBlockByHash fetches the block by its hash and optionally include full transaction receipts

@@ -11,18 +11,20 @@ import (
 
 func ExampleRPC_GetBlockByNumber() {
 	client := rpc.NewClient(getRPCURL())
-	blockNumber := uint64(10000000)
+	blockRef := rpc.LatestBlock
 	if os.Getenv("ETH_GO_RPC_BLOCK_NUMBER") != "" {
 		var err error
-		blockNumber, err = strconv.ParseUint(os.Getenv("ETH_GO_RPC_BLOCK_NUMBER"), 0, 64)
+		blockNumber, err := strconv.ParseUint(os.Getenv("ETH_GO_RPC_BLOCK_NUMBER"), 0, 64)
 		if err != nil {
 			panic(fmt.Errorf("parse custom block number info: %w", err))
 		}
+
+		blockRef = rpc.BlockNumber(blockNumber)
 	}
 
-	result, err := client.GetBlockByNumber(context.Background(), blockNumber, rpc.WithGetBlockFullTransaction())
+	result, err := client.GetBlockByNumber(context.Background(), blockRef, rpc.WithGetBlockFullTransaction())
 	if err != nil {
-		panic(fmt.Errorf("get block by number %d: %w", blockNumber, err))
+		panic(fmt.Errorf("get block by number %s: %w", blockRef, err))
 	}
 
 	bytes, err := rpc.MarshalJSONRPC(result)
@@ -31,4 +33,5 @@ func ExampleRPC_GetBlockByNumber() {
 	}
 
 	fmt.Println(string(bytes))
+	// Output: test
 }

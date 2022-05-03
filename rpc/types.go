@@ -182,7 +182,7 @@ type Transaction struct {
 	S *eth.Uint256 `json:"s,omitempty"`
 
 	// AccessList is the defined access list tuples when the transaction is of AccessList type (0x01), none when transaction of other types.
-	AccessList []AccessList `json:"accessList,omitempty"`
+	AccessList AccessList `json:"accessList,omitempty"`
 
 	// ChainID is the identifier chain the transaction was executed in, none if London fork is **not** activated
 	ChainID eth.Uint64 `json:"chainId,omitempty"`
@@ -248,7 +248,7 @@ func (txs *BlockTransactions) MarshalJSONRPC() ([]byte, error) {
 func (txs *BlockTransactions) marshalJSON(marshaller func(v interface{}) ([]byte, error)) ([]byte, error) {
 	if len(txs.hashes) == 0 {
 		if len(txs.transactions) == 0 {
-			return nil, nil
+			return []byte(`[]`), nil
 		}
 
 		return marshaller(txs.transactions)
@@ -264,6 +264,11 @@ func (txs *BlockTransactions) UnmarshalJSON(data []byte) error {
 	}
 
 	result := rootResult.Get("0")
+	if result.Type == gjson.Null {
+		// No transactions in this block
+		return nil
+	}
+
 	if result.Type == gjson.String {
 		return json.Unmarshal(data, &txs.hashes)
 	}
