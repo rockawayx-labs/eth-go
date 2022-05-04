@@ -68,11 +68,11 @@ func WithHttpClient(httpClient *http.Client) Option {
 
 type LogsParams struct {
 	// FromBlock is either block number encoded as a hexadecimal or tagged value which is one of
-	// "latest" (`rpc.LatestBlock()`), "pending" (`rpc.PendingBlock()`) or "earliest" tags (`rpc.EarliestBlockRef`) (optional).
+	// "latest" (`rpc.LatestBlock`), "pending" (`rpc.PendingBlock`) or "earliest" tags (`rpc.EarliestBlock`) (optional).
 	FromBlock *BlockRef `json:"fromBlock,omitempty"`
 
 	// ToBlock is either block number encoded as a hexadecimal or tagged value which is one of
-	// "latest" (`LatestBlockRef()`), "pending" (`PendingBlockRef()`) or "earliest" tags (`EarliestBlockRef()`) (optional).
+	// "latest" (`LatestBlock`), "pending" (`rpc.PendingBlock`) or "earliest" tags (`EarliestBlock`) (optional).
 	ToBlock *BlockRef `json:"toBlock,omitempty"`
 
 	// Address is the contract address or a list of addresses from which logs should originate (optional).
@@ -380,12 +380,12 @@ func (c *Client) TransactionReceipt(ctx context.Context, hash eth.Hash) (out *Tr
 	return out, nil
 }
 
-func (c *Client) GetTransactionCount(ctx context.Context, accountAddr eth.Address) (uint64, error) {
-	return c.Nonce(ctx, accountAddr)
+func (c *Client) GetTransactionCount(ctx context.Context, accountAddr eth.Address, at *BlockRef) (uint64, error) {
+	return c.Nonce(ctx, accountAddr, at)
 }
 
-func (c *Client) Nonce(ctx context.Context, accountAddr eth.Address) (uint64, error) {
-	resp, err := c.DoRequest(ctx, "eth_getTransactionCount", []interface{}{accountAddr.Pretty(), LatestBlock})
+func (c *Client) Nonce(ctx context.Context, accountAddr eth.Address, at *BlockRef) (uint64, error) {
+	resp, err := c.DoRequest(ctx, "eth_getTransactionCount", []interface{}{accountAddr.Pretty(), atOrLatestIfNil(at)})
 	if err != nil {
 		return 0, fmt.Errorf("unable to perform eth_getTransactionCount request: %w", err)
 	}
@@ -397,8 +397,8 @@ func (c *Client) Nonce(ctx context.Context, accountAddr eth.Address) (uint64, er
 	return nonce, nil
 }
 
-func (c *Client) GetBalance(ctx context.Context, accountAddr eth.Address) (*eth.TokenAmount, error) {
-	resp, err := c.DoRequest(ctx, "eth_getBalance", []interface{}{accountAddr.Pretty(), LatestBlock})
+func (c *Client) GetBalance(ctx context.Context, accountAddr eth.Address, at *BlockRef) (*eth.TokenAmount, error) {
+	resp, err := c.DoRequest(ctx, "eth_getBalance", []interface{}{accountAddr.Pretty(), atOrLatestIfNil(at)})
 	if err != nil {
 		return nil, fmt.Errorf("unable to perform eth_getBalance request: %w", err)
 	}
@@ -699,4 +699,12 @@ func parseResponseID(result gjson.Result, requestIndex int) (int, error) {
 	}
 
 	return int(id), nil
+}
+
+func atOrLatestIfNil(ref *BlockRef) *BlockRef {
+	if ref == nil {
+		return LatestBlock
+	}
+
+	return ref
 }

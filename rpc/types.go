@@ -71,7 +71,11 @@ func (b *BlockRef) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func (b BlockRef) MarshalJSONRPC() ([]byte, error) {
+func (b *BlockRef) MarshalJSONRPC() ([]byte, error) {
+	if b == nil {
+		return []byte("latest"), nil
+	}
+
 	if b.tag != "" {
 		return MarshalJSONRPC(b.tag)
 	}
@@ -79,7 +83,11 @@ func (b BlockRef) MarshalJSONRPC() ([]byte, error) {
 	return MarshalJSONRPC(b.value)
 }
 
-func (b BlockRef) String() string {
+func (b *BlockRef) String() string {
+	if b == nil {
+		return "latest"
+	}
+
 	if b.tag != "" {
 		return strings.ToUpper(string(b.tag[0])) + b.tag[1:]
 	}
