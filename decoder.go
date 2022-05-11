@@ -210,13 +210,15 @@ func (d *Decoder) read(typeName string) (out interface{}, err error) {
 		return d.ReadAddress()
 	case "string":
 		return d.ReadString()
+	case "bytes4":
+		return d.ReadFixedBytes(4)
 	case "bytes32":
-		return d.ReadFixedBytes()
+		return d.ReadFixedBytes(32)
 	case "bytes":
 		return d.ReadBytes()
 	}
 
-	return nil, NewErrDecoding("type %q is not handled right now", typeName)
+	return nil, NewErrDecoding("reading type %q is not handled right now", typeName)
 }
 
 func (d *Decoder) ReadMethod() (out string, err error) {
@@ -272,8 +274,8 @@ func (d *Decoder) ReadBytes() ([]byte, error) {
 	return data, nil
 }
 
-func (d *Decoder) ReadFixedBytes() ([]byte, error) {
-	data, err := d.ReadBuffer(32)
+func (d *Decoder) ReadFixedBytes(byteCount uint64) ([]byte, error) {
+	data, err := d.ReadBuffer(byteCount)
 	if err != nil {
 		return nil, err
 	}

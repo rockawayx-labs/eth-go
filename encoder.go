@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
@@ -198,7 +199,7 @@ func (e *Encoder) write(typeName string, components []*StructComponent, in inter
 
 		return nil
 	}
-	return fmt.Errorf("type %q is not handled right now", typeName)
+	return fmt.Errorf("writing type %q is not handled right now", typeName)
 }
 
 func (e *Encoder) writeElement(typeName string, components []*StructComponent, in interface{}) error {
@@ -245,13 +246,32 @@ func (e *Encoder) writeElement(typeName string, components []*StructComponent, i
 		d, err = e.encodeString(in.(string))
 	case "bytes":
 		d, err = e.encodeBytesFromInterface(in)
+	case "bytes1", "bytes2", "bytes3", "bytes4", "bytes5", "bytes6", "bytes7", "bytes8",
+		"bytes9", "bytes10", "bytes11", "bytes12", "bytes13", "bytes14", "bytes15", "bytes16",
+		"bytes17", "bytes18", "bytes19", "bytes20", "bytes21", "bytes22", "bytes23", "bytes24",
+		"bytes25", "bytes26", "bytes27", "bytes28", "bytes29", "bytes30", "bytes31", "bytes32":
+		// no need to catch error, will never fail as it will be bytes1...bytes32
+		var input []byte
+
+		switch v := in.(type) {
+		case [4]byte:
+			fourBytes := in.([4]byte)
+			input = fourBytes[:]
+		case []byte:
+			input = v
+		default:
+			return fmt.Errorf("unsupported input type %T", in)
+		}
+
+		data, _ := strconv.ParseUint(strings.TrimPrefix(typeName, "bytes"), 10, 64)
+		d, err = e.encodeFixedBytes(input, data)
 	case "event":
 		d, err = e.encodeEvent(in.(string))
 	case "tuple":
 		return e.writeTuple("<unknown>", components, in)
 
 	default:
-		return fmt.Errorf("type %q is not handled right now", typeName)
+		return fmt.Errorf("writing element type %q is not handled right now", typeName)
 	}
 
 	if err != nil {
@@ -459,6 +479,15 @@ func (e *Encoder) encodeBytes(input []byte) ([]byte, error) {
 	for i := 0; i < len(input); i++ {
 		buf[32+i] = input[i]
 	}
+	return buf, nil
+}
+
+func (e *Encoder) encodeFixedBytes(input []byte, size uint64) ([]byte, error) {
+	if uint64(len(input)) < size {
+		return nil, fmt.Errorf("not enough bytes %d, expected size %d", len(input), size)
+	}
+	buf := make([]byte, 32)
+	copy(buf, input[0:size])
 	return buf, nil
 }
 
