@@ -69,6 +69,15 @@ func (e *Encoder) WriteMethodCall(method *MethodCall) error {
 	return e.writeParameters(4, method.MethodDef.Parameters, method.Data)
 }
 
+func (e *Encoder) WriteLogData(parameters []*LogParameter, data []interface{}) error {
+	asFakeMethodParams := make([]*MethodParameter, len(parameters))
+	for i, param := range parameters {
+		asFakeMethodParams[i] = &MethodParameter{Name: param.Name, TypeName: param.TypeName, Components: param.Components}
+	}
+
+	return e.writeParameters(0, asFakeMethodParams, data)
+}
+
 func (e *Encoder) WriteParameters(parameters []*MethodParameter, data []interface{}) error {
 	return e.writeParameters(0, parameters, data)
 }
@@ -163,6 +172,10 @@ func (e *Encoder) Write(parameter *MethodParameter, in interface{}) error {
 	return e.write(parameter.TypeName, parameter.Components, in)
 }
 
+func (e *Encoder) WriteLogParameter(parameter *LogParameter, in interface{}) error {
+	return e.write(parameter.TypeName, parameter.Components, in)
+}
+
 func (e *Encoder) write(typeName string, components []*StructComponent, in interface{}) error {
 	var isAnArray bool
 	isAnArray, resolvedTypeName := isArray(typeName)
@@ -211,7 +224,11 @@ func (e *Encoder) writeElement(typeName string, components []*StructComponent, i
 	var err error
 	switch typeName {
 	case "bool":
-		d, err = e.encodeBool(in.(bool))
+		if v, ok := in.(bool); !ok {
+			err = fmt.Errorf("type %q input should be bool, got %T", typeName, v)
+		} else {
+			d, err = e.encodeBool(v)
+		}
 	case "uint8":
 		d, err = e.encodeUintFromInterface(in, 8)
 	case "uint16":
@@ -239,11 +256,23 @@ func (e *Encoder) writeElement(typeName string, components []*StructComponent, i
 		}
 
 	case "method":
-		d, err = e.encodeMethod(in.(string))
+		if v, ok := in.(string); !ok {
+			err = fmt.Errorf("type %q input should be string, got %T", typeName, v)
+		} else {
+			d, err = e.encodeMethod(v)
+		}
 	case "address":
-		d, err = e.encodeAddress(in.(Address))
+		if v, ok := in.(Address); !ok {
+			err = fmt.Errorf("type %q input should be eth.Address, got %T", typeName, v)
+		} else {
+			d, err = e.encodeAddress(v)
+		}
 	case "string":
-		d, err = e.encodeString(in.(string))
+		if v, ok := in.(string); !ok {
+			err = fmt.Errorf("type %q input should be string, got %T", typeName, v)
+		} else {
+			d, err = e.encodeString(v)
+		}
 	case "bytes":
 		d, err = e.encodeBytesFromInterface(in)
 	case "bytes1", "bytes2", "bytes3", "bytes4", "bytes5", "bytes6", "bytes7", "bytes8",
@@ -266,7 +295,11 @@ func (e *Encoder) writeElement(typeName string, components []*StructComponent, i
 		data, _ := strconv.ParseUint(strings.TrimPrefix(typeName, "bytes"), 10, 64)
 		d, err = e.encodeFixedBytes(input, data)
 	case "event":
-		d, err = e.encodeEvent(in.(string))
+		if v, ok := in.(string); !ok {
+			err = fmt.Errorf("type %q input should be string, got %T", typeName, v)
+		} else {
+			d, err = e.encodeEvent(v)
+		}
 	case "tuple":
 		return e.writeTuple("<unknown>", components, in)
 
