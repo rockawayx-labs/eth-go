@@ -143,7 +143,7 @@ func (f *LogEvent) Encode() (topics []Topic, data []byte, err error) {
 	}
 
 	topics = make([]Topic, len(indexedParameters)+1)
-	copy(topics[0][:], f.Def.logID())
+	copy(topics[0][:], f.Def.LogID())
 
 	if len(indexedParameters) > 0 {
 		for i, param := range indexedParameters {
@@ -174,7 +174,7 @@ func (p *LogParameter) GetName(index int) string {
 	return name
 }
 
-func (l *LogEventDef) logID() []byte {
+func (l *LogEventDef) LogID() []byte {
 	return Keccak256([]byte(l.Signature()))
 }
 
@@ -184,7 +184,8 @@ func (l *LogEventDef) Signature() string {
 		args = append(args, parameter.TypeName)
 	}
 
-	return fmt.Sprintf("%s(%s)", l.Name, strings.Join(args, ", "))
+	// It's important that no spaces is introduced
+	return fmt.Sprintf("%s(%s)", l.Name, strings.Join(args, ","))
 }
 
 func (l *LogEventDef) String() string {

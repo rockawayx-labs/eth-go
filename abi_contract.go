@@ -61,7 +61,7 @@ func parseABIFromReader(reader io.Reader) (*ABI, error) {
 
 		if decl.Type == DeclarationTypeEvent {
 			logEventDef := decl.toLogEventDef()
-			abi.LogEventsMap[string(logEventDef.logID())] = logEventDef
+			abi.LogEventsMap[string(logEventDef.LogID())] = logEventDef
 			abi.LogEventsByNameMap[logEventDef.Name] = logEventDef
 		}
 	}

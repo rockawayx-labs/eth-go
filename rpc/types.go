@@ -36,10 +36,6 @@ func BlockHash(hash string) *BlockRef {
 // MaybeBlockHash is exactly like [BlockHash] but it does not panic and returns the error
 // instead.
 func MaybeBlockHash(in string) (*BlockRef, error) {
-	if in == "" {
-		return nil, fmt.Errorf("block hash cannot be empty")
-	}
-
 	hash, err := eth.NewHash(in)
 	if err != nil {
 		return nil, err
