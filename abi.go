@@ -19,6 +19,11 @@ import "go.uber.org/zap"
 // ABI is our custom internal definition of a contract's ABI that bridges the information
 // between the two ABI like formats for contract's, i.e. `.abi` file and AST file as output
 // by `solc` compiler.
+//
+// FIXME: Our internal structure is wrong because multiple functions and multiple events
+// can exist under the same name. This is problematic right now because we use a one level
+// mapping and only the "last seen" event wins. This will require a refactor and will trickle
+// down in a few places.
 type ABI struct {
 	LogEventsMap    map[string]*LogEventDef
 	FunctionsMap    map[string]*MethodDef
@@ -33,6 +38,12 @@ func (a *ABI) FindLog(topic []byte) *LogEventDef {
 	zlog.Info("looking for log event by topic", zap.Stringer("topic", Hash(topic)))
 
 	return a.LogEventsMap[string(topic)]
+}
+
+func (a *ABI) FindLogByName(name string) *LogEventDef {
+	zlog.Info("looking for log by name", zap.String("event_name", name))
+
+	return a.LogEventsByNameMap[name]
 }
 
 func (a *ABI) FindFunction(functionHash []byte) *MethodDef {

@@ -93,6 +93,9 @@ func TestBlockRef_UnmarshalText(t *testing.T) {
 		{"block number hexadecimal zero", args{"0x0"}, BlockNumber(0), require.NoError},
 		{"block number hexadecimal zero", args{"0x0"}, BlockNumber(0), require.NoError},
 		{"block number hexadecimal value", args{"0x123"}, BlockNumber(291), require.NoError},
+
+		{"block hash empty", args{`{"blockHash":"0x"}`}, BlockHash(""), require.NoError},
+		{"block hash full", args{`{"blockHash":"0xf092d0fffe12ec3978b369b861121b62b37a4c1176beda7116f24ce1b7a4937e"}`}, BlockHash("0xf092d0fffe12ec3978b369b861121b62b37a4c1176beda7116f24ce1b7a4937e"), require.NoError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

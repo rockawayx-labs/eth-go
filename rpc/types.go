@@ -17,10 +17,47 @@ var EarliestBlock = &BlockRef{tag: "earliest"}
 type BlockRef struct {
 	tag   string
 	value uint64
+	hash  eth.Hash
+}
+
+// BlockHash is supported on some providers like Alchemy and is based on [EIP-1898](https://eips.ethereum.org/EIPS/eip-1898)
+// rules.
+//
+// @panics If hash == ""
+func BlockHash(hash string) *BlockRef {
+	ref, err := MaybeBlockHash(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	return ref
+}
+
+// MaybeBlockHash is exactly like [BlockHash] but it does not panic and returns the error
+// instead.
+func MaybeBlockHash(in string) (*BlockRef, error) {
+	if in == "" {
+		return nil, fmt.Errorf("block hash cannot be empty")
+	}
+
+	hash, err := eth.NewHash(in)
+	if err != nil {
+		return nil, err
+	}
+
+	// We use the `nil` value internally in the struct to denot if the
+	// hash variable is actually set or not, so for us `nil` has not the
+	// same meaning as `len(x) == 0`. To be defensive, even if `eth.NewHash`
+	// never generate the `nil` value, we ensure to set it correclty.
+	if hash == nil {
+		hash = []byte{}
+	}
+
+	return &BlockRef{hash: hash}, nil
 }
 
 func BlockNumber(number uint64) *BlockRef {
-	return &BlockRef{tag: "", value: number}
+	return &BlockRef{value: number}
 }
 
 func (b *BlockRef) IsLatest() bool {
@@ -40,12 +77,44 @@ func (b *BlockRef) BlockNumber() (number uint64, ok bool) {
 		return 0, false
 	}
 
+	if b.hash != nil {
+		return 0, false
+	}
+
 	return b.value, true
 }
 
-func (b *BlockRef) UnmarshalText(text []byte) error {
-	lowerTextString := strings.ToLower(string(text))
+func (b *BlockRef) BlockHash() (hash eth.Hash, ok bool) {
+	if b.tag != "" {
+		return nil, false
+	}
 
+	if b.hash == nil {
+		return nil, false
+	}
+
+	return b.hash, true
+}
+
+type blockHashObject struct {
+	Hash eth.Hash `json:"blockHash"`
+}
+
+func (b *BlockRef) UnmarshalText(text []byte) error {
+	if gjson.ParseBytes(text).IsObject() {
+		// Is it right to do JSON unmarshaling in the text version? Maybe we should use a pure `UnmarshalJSOM`.
+		var obj blockHashObject
+		if err := json.Unmarshal(text, &obj); err != nil {
+			return fmt.Errorf("invalid hash: %w", err)
+		}
+
+		b.tag = ""
+		b.value = 0
+		b.hash = obj.Hash
+		return nil
+	}
+
+	lowerTextString := strings.ToLower(string(text))
 	if lowerTextString == LatestBlock.tag {
 		*b = *LatestBlock
 		return nil
@@ -68,6 +137,7 @@ func (b *BlockRef) UnmarshalText(text []byte) error {
 
 	b.tag = ""
 	b.value = uint64(value)
+	b.hash = nil
 	return nil
 }
 

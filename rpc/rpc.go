@@ -445,6 +445,33 @@ type RPCResponse struct {
 	decoder ResponseDecoder
 }
 
+func (r *RPCResponse) UnmarshalJSON(in []byte) error {
+	response := gjson.ParseBytes(in)
+
+	id, rawValue, err := parseResponseID(response)
+	if err != nil {
+		return fmt.Errorf("invalid id value %q: %w", rawValue, err)
+	}
+
+	rpcErrorResult := response.Get("error")
+	if !rpcErrorResult.Exists() {
+		r.ID = id
+		r.Content = response.Get("result").String()
+		return nil
+	}
+
+	rpcErr := &ErrResponse{}
+	if err := json.Unmarshal([]byte(rpcErrorResult.Raw), rpcErr); err != nil {
+		// We were not able to deserialize to RPC error, return the whole thing with an error
+		return fmt.Errorf("invalid error value %q: %w", rpcErrorResult.Raw, err)
+	}
+
+	r.ID = id
+	r.Err = rpcErr
+
+	return nil
+}
+
 func (res *RPCResponse) CopyDecoder(req *RPCRequest) {
 	res.decoder = req.decoder
 }
@@ -642,9 +669,9 @@ func parseRPCResults(logger *zap.Logger, in []byte) ([]*RPCResponse, error) {
 	for i, response := range responses {
 		rpcErrorResult := response.Get("error")
 		if !rpcErrorResult.Exists() {
-			id, err := parseResponseID(response, i)
+			id, rawValue, err := parseResponseID(response)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("json_rpc invalid id value %q for request at index %d: %s", rawValue, i, err)
 			}
 
 			out = append(out, &RPCResponse{Content: response.Get("result").String(), ID: int(id)})
@@ -666,9 +693,9 @@ func parseRPCResults(logger *zap.Logger, in []byte) ([]*RPCResponse, error) {
 			return nil, fmt.Errorf("json_rpc returned error: %s", rpcErrorResult)
 		}
 
-		id, err := parseResponseID(response, i)
+		id, rawValue, err := parseResponseID(response)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("json_rpc invalid id value %q for request at index %d: %s", rawValue, i, err)
 		}
 
 		out = append(out, &RPCResponse{Err: rpcErr, ID: id})
@@ -690,15 +717,15 @@ func methodsFromRPCRequests(requests []*RPCRequest) (out []string) {
 	return
 }
 
-func parseResponseID(result gjson.Result, requestIndex int) (int, error) {
+func parseResponseID(result gjson.Result) (int, string, error) {
 	idValue := result.Get("id").String()
 
 	var id eth.Uint64
 	if err := id.UnmarshalText([]byte(idValue)); err != nil {
-		return 0, fmt.Errorf("json_rpc invalid id value %q for request at index %d: %s", idValue, requestIndex, err)
+		return 0, idValue, err
 	}
 
-	return int(id), nil
+	return int(id), idValue, nil
 }
 
 func atOrLatestIfNil(ref *BlockRef) *BlockRef {
