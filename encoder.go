@@ -17,6 +17,7 @@ package eth
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -92,7 +93,7 @@ func (e *Encoder) writeParameters(methodSelectorOffset int, parameters []*Method
 
 	slicesToInsert := []arrayToInsert{}
 	for idx, param := range parameters {
-		if isOffsetType(param.TypeName) {
+		if isDynamicType(param.TypeName) {
 			slicesToInsert = append(slicesToInsert, arrayToInsert{
 				buffOffset: uint64(len(e.buffer)),
 				typeName:   param.TypeName,
@@ -501,17 +502,23 @@ func (e *Encoder) encodeMethod(input string) ([]byte, error) {
 }
 
 func (e *Encoder) encodeBytes(input []byte) ([]byte, error) {
-	buf := make([]byte, 32+len(input))
+	// The number of 32 bytes row of data aside the actu
+	bankCount := int(math.Ceil(float64(len(input)) / 32.0))
+
+	buf := make([]byte, 32+(bankCount*32))
 	l, err := e.encodeUint(uint64(len(input)), 64)
 	if err != nil {
-		return nil, fmt.Errorf("unable to encode string size: %w", err)
+		return nil, fmt.Errorf("unable to encode bytes length: %w", err)
 	}
 	for i := 0; i < 32; i++ {
 		buf[i] = l[i]
 	}
-	for i := 0; i < len(input); i++ {
+
+	i := 0
+	for ; i < len(input); i++ {
 		buf[32+i] = input[i]
 	}
+
 	return buf, nil
 }
 
@@ -570,7 +577,7 @@ func pad(in []byte) []byte {
 	return d
 }
 
-func isOffsetType(typeName string) bool {
+func isDynamicType(typeName string) bool {
 	// First as they are probably the most probable type
 	if typeName == "bytes" || typeName == "string" {
 		return true

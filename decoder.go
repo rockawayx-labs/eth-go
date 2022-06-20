@@ -88,7 +88,7 @@ func (d *Decoder) readParameters(parameters []*MethodParameter, methodOffset uin
 	for i, param := range parameters {
 		var currentOffset uint64
 
-		isOffset := isOffsetType(param.TypeName)
+		isOffset := isDynamicType(param.TypeName)
 		if isOffset {
 			currentOffset = d.offset
 			offset, err := d.read("uint256")
