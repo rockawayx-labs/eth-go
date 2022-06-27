@@ -38,6 +38,13 @@ func TestRPC_ErrorHandling(t *testing.T) {
 	assert.Equal(t, &ErrResponse{Code: -32000, Message: "invalid error"}, err)
 }
 
+func TestRPC_ErrResponseMarshalRPC(t *testing.T) {
+	out, err := MarshalJSONRPC(&ErrResponse{Code: -32000, Message: "invalid error"})
+	require.NoError(t, err)
+
+	assert.Equal(t, `{"code":-32000,"message":"invalid error"}`, string(out))
+}
+
 func TestRPC_Call(t *testing.T) {
 	tests := []struct {
 		name        string

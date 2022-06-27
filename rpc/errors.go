@@ -15,12 +15,19 @@
 package rpc
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
 
+type ErrorCode int
+
+func (c ErrorCode) MarshalJSONRPC() ([]byte, error) {
+	return json.Marshal(int(c))
+}
+
 type ErrResponse struct {
-	Code    int         `json:"code"`
+	Code    ErrorCode   `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
