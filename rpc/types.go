@@ -247,7 +247,7 @@ type Transaction struct {
 	Input eth.Hex `json:"input,omitempty"`
 
 	// V is the ECDSA recovery id of the transaction's signature.
-	V eth.Uint8 `json:"v,omitempty"`
+	V eth.Uint64 `json:"v,omitempty"`
 
 	// R is the ECDSA signature R point of transaction's signature.
 	R *eth.Uint256 `json:"r,omitempty"`
