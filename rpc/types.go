@@ -96,6 +96,19 @@ type blockHashObject struct {
 	Hash eth.Hash `json:"blockHash"`
 }
 
+func (b *BlockRef) UnmarshalJSON(text []byte) error {
+	if gjson.ParseBytes(text).IsObject() {
+		return b.UnmarshalText(text)
+	}
+
+	var s string
+	if err := json.Unmarshal(text, &s); err != nil {
+		return fmt.Errorf("unmarshal string: %w", err)
+	}
+
+	return b.UnmarshalText([]byte(s))
+}
+
 func (b *BlockRef) UnmarshalText(text []byte) error {
 	if gjson.ParseBytes(text).IsObject() {
 		// Is it right to do JSON unmarshaling in the text version? Maybe we should use a pure `UnmarshalJSOM`.

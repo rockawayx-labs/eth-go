@@ -64,6 +64,49 @@ func topic(in string) (out *eth.Topic) {
 	return (*eth.Topic)(&bytes)
 }
 
+func TestBlockRef_UnmarshalJSON(t *testing.T) {
+	type args struct {
+		text string
+	}
+	tests := []struct {
+		name      string
+		args      args
+		expected  *BlockRef
+		assertion require.ErrorAssertionFunc
+	}{
+		{"latest all lower case", args{`"latest"`}, LatestBlock, require.NoError},
+		{"latest mixed case", args{`"laTesT"`}, LatestBlock, require.NoError},
+		{"latest all upper case", args{`"LATEST"`}, LatestBlock, require.NoError},
+
+		{"earliest all lower case", args{`"earliest"`}, EarliestBlock, require.NoError},
+		{"earliest mixed case", args{`"EarliesT"`}, EarliestBlock, require.NoError},
+		{"earliest all upper case", args{`"EARLIEST"`}, EarliestBlock, require.NoError},
+
+		{"pending all lower case", args{`"pending"`}, PendingBlock, require.NoError},
+		{"pending mixed case", args{`"pEndIng"`}, PendingBlock, require.NoError},
+		{"pending all upper case", args{`"PENDING"`}, PendingBlock, require.NoError},
+
+		{"block number decimal zero", args{`"0"`}, BlockNumber(0), require.NoError},
+		{"block number decimal value", args{`"112"`}, BlockNumber(112), require.NoError},
+
+		{"block number hexadecimal empty", args{`"0x"`}, BlockNumber(0), require.NoError},
+		{"block number hexadecimal zero", args{`"0x0"`}, BlockNumber(0), require.NoError},
+		{"block number hexadecimal zero", args{`"0x0"`}, BlockNumber(0), require.NoError},
+		{"block number hexadecimal value", args{`"0x123"`}, BlockNumber(291), require.NoError},
+
+		{"block hash empty", args{`{"blockHash":"0x"}`}, BlockHash(""), require.NoError},
+		{"block hash full", args{`{"blockHash":"0xf092d0fffe12ec3978b369b861121b62b37a4c1176beda7116f24ce1b7a4937e"}`}, BlockHash("0xf092d0fffe12ec3978b369b861121b62b37a4c1176beda7116f24ce1b7a4937e"), require.NoError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &BlockRef{}
+			tt.assertion(t, b.UnmarshalJSON([]byte(tt.args.text)))
+
+			assert.Equal(t, tt.expected, b)
+		})
+	}
+}
+
 func TestBlockRef_UnmarshalText(t *testing.T) {
 	type args struct {
 		text string
