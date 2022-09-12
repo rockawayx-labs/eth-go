@@ -308,7 +308,7 @@ type Block struct {
 	Nonce            eth.Uint64         `json:"nonce,omitempty"`
 	LogsBloom        eth.Hex            `json:"logsBloom"`
 	ExtraData        eth.Hex            `json:"extraData"`
-	BaseFeePerGas    eth.Uint64         `json:"baseFeePerGas,omitempty"`
+	BaseFeePerGas    *eth.Uint256       `json:"baseFeePerGas,omitempty"`
 	BlockSize        eth.Uint64         `json:"size,omitempty"`
 	Transactions     *BlockTransactions `json:"transactions,omitempty"`
 	UnclesSHA3       eth.Hash           `json:"sha3Uncles,omitempty"`
