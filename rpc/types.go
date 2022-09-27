@@ -139,14 +139,24 @@ func (b *BlockRef) UnmarshalText(text []byte) error {
 		return nil
 	}
 
-	var value eth.Uint64
-	if err := value.UnmarshalText(text); err != nil {
-		return err
+	b.tag = ""
+	b.value = 0
+	b.hash = nil
+
+	if len(text) > 18 { // A hack to differentiate between Uint64 and Hash
+		var value eth.Hash
+		if err := value.UnmarshalText(text); err != nil {
+			return fmt.Errorf("invalid block hash: %w", err)
+		}
+		b.hash = value
+	} else {
+		var value eth.Uint64
+		if err := value.UnmarshalText(text); err != nil {
+			return fmt.Errorf("invalid block number: %w", err)
+		}
+		b.value = uint64(value)
 	}
 
-	b.tag = ""
-	b.value = uint64(value)
-	b.hash = nil
 	return nil
 }
 
@@ -303,9 +313,9 @@ type Block struct {
 	GasLimit         eth.Uint64         `json:"gasLimit"`
 	GasUsed          eth.Uint64         `json:"gasUsed"`
 	Difficulty       *eth.Uint256       `json:"difficulty"`
-	TotalDifficult   *eth.Uint256       `json:"totalDifficulty"`
+	TotalDifficulty  *eth.Uint256       `json:"totalDifficulty"`
 	Miner            eth.Address        `json:"miner"`
-	Nonce            eth.Uint64         `json:"nonce,omitempty"`
+	Nonce            eth.FixedUint64    `json:"nonce,omitempty"`
 	LogsBloom        eth.Hex            `json:"logsBloom"`
 	ExtraData        eth.Hex            `json:"extraData"`
 	BaseFeePerGas    *eth.Uint256       `json:"baseFeePerGas,omitempty"`
@@ -322,6 +332,12 @@ type Block struct {
 type BlockTransactions struct {
 	hashes       []eth.Hash
 	transactions []Transaction
+}
+
+func NewBlockTransactions() *BlockTransactions {
+	return &BlockTransactions{
+		transactions: make([]Transaction, 0),
+	}
 }
 
 func (txs *BlockTransactions) MarshalJSON() ([]byte, error) {

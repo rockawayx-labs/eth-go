@@ -21,6 +21,7 @@ import (
 	"math"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -229,6 +230,26 @@ func TestUint64_UnmarshalJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TODO: add more test cases
+func TestFixedUint64_MarshalJSONRPC(t *testing.T) {
+	nonce := FixedUint64(66)
+
+	b, err := nonce.MarshalJSONRPC()
+
+	require.NoError(t, err)
+	assert.Equal(t, `"0x0000000000000042"`, string(b))
+}
+
+// TODO: add more test cases
+func TestTimestamp_MarshalJSONRPC(t *testing.T) {
+	ts := Timestamp(time.Unix(0, 0))
+
+	b, err := ts.MarshalJSONRPC()
+
+	require.NoError(t, err)
+	assert.Equal(t, `"0x0"`, string(b))
 }
 
 func Test_padTo32Bytes(t *testing.T) {

@@ -89,9 +89,32 @@ func (b *Uint256) MarshalJSONRPC() ([]byte, error) {
 	return []byte(`"` + (*uint256.Int)(b).Hex() + `"`), nil
 }
 
+// FixedUint64 is a fixed size uint64, marshalled as a fixed 8 bytes big endian
+type FixedUint64 uint64
+
+func (n *FixedUint64) MarshalJSONRPC() ([]byte, error) {
+	if n == nil {
+		return []byte(`"0x0000000000000000"`), nil
+	}
+
+	v := make([]byte, 8)
+	binary.BigEndian.PutUint64(v, uint64(*n))
+
+	return Hex(v).MarshalJSONRPC()
+}
+
 // Timestamp represents a timestamp value on the Ethereum chain always in UTC
-// time zone.
+// time zone. Recorded in unix seconds
 type Timestamp time.Time
+
+func (t Timestamp) MarshalJSONRPC() ([]byte, error) {
+	seconds := Uint64(time.Time(t).Unix())
+
+	v := make([]byte, 0, 16)
+	v = strconv.AppendUint(v, uint64(seconds), 16)
+
+	return []byte(`"0x` + string(v) + `"`), nil
+}
 
 func (t Timestamp) MarshalText() ([]byte, error) {
 	return []byte((time.Time)(t).Format(time.RFC3339)), nil
@@ -237,6 +260,7 @@ func (h Bytes) ID() uint64                       { return byteSlice(h).ID() }
 func (h Bytes) MarshalJSON() ([]byte, error)     { return byteSlice(h).MarshalJSON() }
 func (h Bytes) MarshalJSONRPC() ([]byte, error)  { return byteSlice(h).MarshalJSONRPC() }
 func (h *Bytes) UnmarshalJSON(data []byte) error { return (*byteSlice)(h).UnmarshalJSON(data) }
+func (h *Bytes) UnmarshalText(data []byte) error { return (*byteSlice)(h).UnmarshalText(data) }
 
 type Hex []byte
 
@@ -261,6 +285,7 @@ func (h Hex) ID() uint64                       { return byteSlice(h).ID() }
 func (h Hex) MarshalJSON() ([]byte, error)     { return byteSlice(h).MarshalJSON() }
 func (h Hex) MarshalJSONRPC() ([]byte, error)  { return byteSlice(h).MarshalJSONRPC() }
 func (h *Hex) UnmarshalJSON(data []byte) error { return (*byteSlice)(h).UnmarshalJSON(data) }
+func (h *Hex) UnmarshalText(data []byte) error { return (*byteSlice)(h).UnmarshalText(data) }
 
 type Hash []byte
 
@@ -285,6 +310,7 @@ func (h Hash) ID() uint64                       { return byteSlice(h).ID() }
 func (h Hash) MarshalJSON() ([]byte, error)     { return byteSlice(h).MarshalJSON() }
 func (h Hash) MarshalJSONRPC() ([]byte, error)  { return byteSlice(h).MarshalJSONRPC() }
 func (h *Hash) UnmarshalJSON(data []byte) error { return (*byteSlice)(h).UnmarshalJSON(data) }
+func (h *Hash) UnmarshalText(data []byte) error { return (*byteSlice)(h).UnmarshalText(data) }
 
 type Address []byte
 
@@ -319,6 +345,7 @@ func (a Address) ID() uint64                       { return byteSlice(a).ID() }
 func (a Address) MarshalJSON() ([]byte, error)     { return byteSlice(a).MarshalJSON() }
 func (a Address) MarshalJSONRPC() ([]byte, error)  { return byteSlice(a).MarshalJSONRPC() }
 func (a *Address) UnmarshalJSON(data []byte) error { return (*byteSlice)(a).UnmarshalJSON(data) }
+func (a *Address) UnmarshalText(data []byte) error { return (*byteSlice)(a).UnmarshalText(data) }
 
 type byteSlice []byte
 
@@ -374,7 +401,11 @@ func (b *byteSlice) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	s = strings.TrimPrefix(s, "0x")
+	return b.UnmarshalText([]byte(s))
+}
+
+func (b *byteSlice) UnmarshalText(text []byte) error {
+	s := strings.TrimPrefix(string(text), "0x")
 	if len(s)%2 != 0 {
 		s = "0" + s
 	}
@@ -431,13 +462,13 @@ func padToTopic(in []byte) (out *Topic) {
 
 //go:generate go-enum -f=$GOFILE --noprefix --prefix TxType --lower --names
 
-//
 // ENUM(
-//   Legacy
-//   AccessList
-//   DynamicFee
-// )
 //
+//	Legacy
+//	AccessList
+//	DynamicFee
+//
+// )
 type TransactionType uint8
 
 func (b *TransactionType) UnmarshalText(text []byte) error {

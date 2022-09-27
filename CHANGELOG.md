@@ -7,3 +7,9 @@
 - [Added] `LogEventDef.LogID()` is now exposed publicly.
 
 - [Fix] `LogEventDef.Signature()` is now formatted to be read for `Keccak` processing.
+
+- [Fix] `rpc.Block.Nonce` is now a FixedUint64 to enforce `0x0000000000000000` encoding.
+
+- [Fix] `rpc.Block.Timestamp` is now encoded as a `uint64` instead of a time.RFC3339 string
+
+- [Fix] `rpc.BlockRef` decoding fixed to support either a `BlockNumber` or a `BlockHash`

@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -105,6 +107,17 @@ func TestBlockRef_UnmarshalJSON(t *testing.T) {
 			assert.Equal(t, tt.expected, b)
 		})
 	}
+}
+
+func TestName(t *testing.T) {
+	data := []byte(`["0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",false]`)
+
+	v := []interface{}{new(BlockRef), new(bool)}
+	err := json.Unmarshal(data, &v)
+	require.NoError(t, err)
+
+	fmt.Println(v)
+
 }
 
 func TestBlockRef_UnmarshalText(t *testing.T) {
