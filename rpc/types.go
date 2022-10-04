@@ -169,6 +169,14 @@ func (b *BlockRef) MarshalJSONRPC() ([]byte, error) {
 		return MarshalJSONRPC(b.tag)
 	}
 
+	if b.hash != nil { // [EIP-1898](https://eips.ethereum.org/EIPS/eip-1898)
+		return MarshalJSONRPC(struct {
+			BlockHash string `json:"blockHash,omitempty"`
+		}{
+			BlockHash: b.hash.Pretty(),
+		})
+	}
+
 	return MarshalJSONRPC(b.value)
 }
 
