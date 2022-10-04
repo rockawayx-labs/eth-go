@@ -527,6 +527,14 @@ func NewETHCall(to eth.Address, methodDef *eth.MethodDef, options ...ETHCallOpti
 	return c
 }
 
+// NewRawETHCall can be used to construct an ETHCall when caller has already encoded the call data
+func NewRawETHCall(callParams CallParams, atBlock *BlockRef) *ETHCall {
+	return &ETHCall{
+		params: callParams,
+		atExpr: atBlock,
+	}
+}
+
 type ETHCall struct {
 	params          CallParams
 	methodDef       *eth.MethodDef
