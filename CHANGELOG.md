@@ -1,5 +1,7 @@
 ## Unreleased
 
+- [Changed] Added `out of gas` and `Out of gas` as deterministic error (with the constraint that all provider of `eth_call` used have a `gasCap` configured >= than `gasLimit` used for a call, which should be fixed).
+
 - [Fix] `rpc.Block#BaseFee` is now correctly a `*eth.Uint256` value, you can use `(*uint256.Int)(block.BaseFee).Uint64()` to get back the `uint64` value again (you should check for `nil` value though because it **can** be `nil`).
 
 - [Fix] Encoding of `bytes` in ABI format wasn't properly left padding.

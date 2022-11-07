@@ -39,7 +39,7 @@ func (e *ErrResponse) Error() string {
 // Try to check if the call was reverted. The JSON-RPC response for reverts is
 // not standardized, so we have ad-hoc checks for each of Geth, Parity and
 // Ganache.
-// These come from https://github.com/graphprotocol/graph-node/blob/master/chain/ethereum/src/ethereum_adapter.rs
+// These come from https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L486
 
 var GETH_DETERMINISTIC_ERRORS = []string{
 	"execution reverted",
@@ -48,18 +48,30 @@ var GETH_DETERMINISTIC_ERRORS = []string{
 	"stack limit reached 1024",
 	"stack underflow (",
 	"gas uint64 overflow",
+	// See https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L69 for some reasoning
+	// why `out of gas` is considered deterministic. One thing to remember, from an operator perspective, a minimal amount of `gasCap` is required on the node that
+	// is handling `eth_call`, it must be equal or greater than `gasLimit` we use for the call.
+	"out of gas",
 }
 
 const PARITY_BAD_INSTRUCTION_FE = "Bad instruction fe"
 const PARITY_BAD_INSTRUCTION_FD = "Bad instruction fd"
 const PARITY_BAD_JUMP_PREFIX = "Bad jump"
 const PARITY_STACK_LIMIT_PREFIX = "Out of stack"
+const PARITY_OUT_OF_GAS = "Out of gas"
 const PARITY_VM_EXECUTION_ERROR = -32015
 const PARITY_REVERT_PREFIX = "Reverted 0x"
 
 const GANACHE_VM_EXECUTION_ERROR = -32000
 const GANACHE_REVERT_MESSAGE = "VM Exception while processing transaction: revert"
 
+// IsDeterministicError determines if an error is deterministic or not according to
+// some heuristic based on the error's message.
+//
+// The rules used here are the one used by `graph-node` software to determine if the
+// error is determinsitic or not.
+//
+// See https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L486
 func IsDeterministicError(err *ErrResponse) bool {
 	return IsGethDeterministicError(err) ||
 		IsParityDeterministicError(err) ||
