@@ -93,6 +93,10 @@ func IsParityDeterministicError(err *ErrResponse) bool {
 		return true
 	}
 
+	if err.Message == PARITY_OUT_OF_GAS {
+		return true
+	}
+
 	if err.Message == PARITY_BAD_INSTRUCTION_FD ||
 		err.Message == PARITY_BAD_INSTRUCTION_FE {
 		return true
