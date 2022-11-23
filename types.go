@@ -92,6 +92,16 @@ func (b *Uint256) MarshalJSONRPC() ([]byte, error) {
 // FixedUint64 is a fixed size uint64, marshalled as a fixed 8 bytes big endian
 type FixedUint64 uint64
 
+func (b *FixedUint64) UnmarshalText(text []byte) error {
+	value, err := parseUint(string(text), 64)
+	if err != nil {
+		return err
+	}
+
+	*b = FixedUint64(value)
+	return nil
+}
+
 func (n *FixedUint64) MarshalJSONRPC() ([]byte, error) {
 	if n == nil {
 		return []byte(`"0x0000000000000000"`), nil
