@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "src/Codec.sol";
 
-contract CodecTest is DSTest {
+contract CodecTest is Test {
     Codec codec;
 
     function setUp() public {
@@ -326,6 +326,23 @@ contract CodecTest is DSTest {
 
         (bool success, ) = address(codec).call(actual);
         require(success, "call should have succeeed");
+    }
+
+    function testEmitEventIArrayAddress() public {
+        vm.recordLogs();
+
+        codec.emitEventIArrayAddress();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 1, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 2);
+        assertEq(logs[0].topics[0], keccak256("EventIArrayAddress(address[])"));
+
+        // codec.logBytes(logs[0].topics[1]);
+        codec.logBytes(logs[0].data);
+
+        require(false, "");
     }
 
     // FIXME: Shared for all tests ..., copied from test/PersonalSigning

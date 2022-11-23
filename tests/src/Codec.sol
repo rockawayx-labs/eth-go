@@ -5,6 +5,8 @@ contract Codec {
 
     event EventUFixedArraySubDynamic(bytes[2] param0);
 
+    event EventIArrayAddress(address[] indexed param0);
+
     event EventUBytes8UBytes16UBytes24UBytes32(
         bytes8 param0,
         bytes16 param1,
@@ -69,6 +71,14 @@ contract Codec {
         address[2] memory,
         address[] memory
     ) public pure {}
+
+    function emitEventIArrayAddress() public {
+        address[] memory addresses = new address[](2);
+        addresses[0] = 0xdB0De9288CF0713De91371969efCC9969dd94117;
+        addresses[1] = 0xdB0De9288CF0713De91371969efCC9969dd94117;
+
+        emit EventIArrayAddress(addresses);
+    }
 
     function logBytes(bytes memory data) public pure {
         // Will be recorded automatically by forge, use 'forge test -m <testName> -vvv' to see the results
