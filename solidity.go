@@ -50,11 +50,23 @@ func ParseType(raw string) (SolidityType, error) {
 	case "address":
 		return AddressType{}, nil
 
+	case "int":
+		return SignedIntegerType{BitsSize: 256, ByteSize: 32}, nil
+
+	case "uint":
+		return UnsignedIntegerType{BitsSize: 256, ByteSize: 32}, nil
+
 	case "bytes":
 		return BytesType{}, nil
 
 	case "string":
 		return StringType{}, nil
+
+	case "fixed":
+		return SignedFixedPointType{BitsSize: 128, ByteSize: 16, Decimals: 18}, nil
+
+	case "ufixed":
+		return UnsignedFixedPointType{BitsSize: 128, ByteSize: 16, Decimals: 18}, nil
 
 	case "tuple":
 		return StructType{}, nil
@@ -168,7 +180,7 @@ func parseFixedPointType(raw string, matchGroups []string) (SolidityType, error)
 
 	decimals := uint(decimalsU64)
 
-	if bitsSize > 80 {
+	if decimals > 80 {
 		return nil, fmt.Errorf("invalid fixed point type %q: decimals %d is bigger than 80", raw, decimals)
 	}
 

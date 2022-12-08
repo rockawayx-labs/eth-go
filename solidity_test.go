@@ -29,6 +29,7 @@ func TestParseType(t *testing.T) {
 		{"string", args{"string"}, StringType{}, require.NoError},
 		{"tuple", args{"tuple"}, StructType{}, require.NoError},
 
+		{"int", args{"int"}, SignedIntegerType{BitsSize: 256, ByteSize: 32}, require.NoError},
 		{"int0", args{"int0"}, nil, hasError("invalid integer type \"int0\": bits size 0 is lower than 8")},
 		{"int7", args{"int7"}, nil, hasError("invalid integer type \"int7\": bits size 7 is lower than 8")},
 		{"int8", args{"int8"}, SignedIntegerType{BitsSize: 8, ByteSize: 1}, require.NoError},
@@ -37,6 +38,7 @@ func TestParseType(t *testing.T) {
 		{"int257", args{"int257"}, nil, hasError("invalid integer type \"int257\": bits size 257 is bigger than 256")},
 		{"int262", args{"int262"}, nil, hasError("invalid integer type \"int262\": bits size 262 is bigger than 256")},
 
+		{"uint", args{"uint"}, UnsignedIntegerType{BitsSize: 256, ByteSize: 32}, require.NoError},
 		{"uint0", args{"uint0"}, nil, hasError("invalid integer type \"uint0\": bits size 0 is lower than 8")},
 		{"uint7", args{"uint7"}, nil, hasError("invalid integer type \"uint7\": bits size 7 is lower than 8")},
 		{"uint8", args{"uint8"}, UnsignedIntegerType{BitsSize: 8, ByteSize: 1}, require.NoError},
@@ -44,6 +46,24 @@ func TestParseType(t *testing.T) {
 		{"uint256", args{"uint256"}, UnsignedIntegerType{BitsSize: 256, ByteSize: 32}, require.NoError},
 		{"uint257", args{"uint257"}, nil, hasError("invalid integer type \"uint257\": bits size 257 is bigger than 256")},
 		{"uint262", args{"uint262"}, nil, hasError("invalid integer type \"uint262\": bits size 262 is bigger than 256")},
+
+		{"fixed", args{"fixed"}, SignedFixedPointType{BitsSize: 128, ByteSize: 16, Decimals: 18}, require.NoError},
+		{"fixed0x18", args{"fixed0x18"}, nil, hasError("invalid fixed point type \"fixed0x18\": bits size 0 is lower than 8")},
+		{"fixed7x18", args{"fixed7x18"}, nil, hasError("invalid fixed point type \"fixed7x18\": bits size 7 is lower than 8")},
+		{"fixed8x18", args{"fixed8x18"}, SignedFixedPointType{BitsSize: 8, ByteSize: 1, Decimals: 18}, require.NoError},
+		{"fixed9x18", args{"fixed9x18"}, nil, hasError("invalid fixed point type \"fixed9x18\": bits size 9 must be divisble by 8")},
+		{"fixed256x18", args{"fixed256x18"}, SignedFixedPointType{BitsSize: 256, ByteSize: 32, Decimals: 18}, require.NoError},
+		{"fixed257x18", args{"fixed257x18"}, nil, hasError("invalid fixed point type \"fixed257x18\": bits size 257 is bigger than 256")},
+		{"fixed262x18", args{"fixed262x18"}, nil, hasError("invalid fixed point type \"fixed262x18\": bits size 262 is bigger than 256")},
+
+		{"ufixed", args{"ufixed"}, UnsignedFixedPointType{BitsSize: 128, ByteSize: 16, Decimals: 18}, require.NoError},
+		{"ufixed0x18", args{"ufixed0x18"}, nil, hasError("invalid fixed point type \"ufixed0x18\": bits size 0 is lower than 8")},
+		{"ufixed7x18", args{"ufixed7x18"}, nil, hasError("invalid fixed point type \"ufixed7x18\": bits size 7 is lower than 8")},
+		{"ufixed8x18", args{"ufixed8x18"}, UnsignedFixedPointType{BitsSize: 8, ByteSize: 1, Decimals: 18}, require.NoError},
+		{"ufixed9x18", args{"ufixed9x18"}, nil, hasError("invalid fixed point type \"ufixed9x18\": bits size 9 must be divisble by 8")},
+		{"ufixed256x18", args{"ufixed256x18"}, UnsignedFixedPointType{BitsSize: 256, ByteSize: 32, Decimals: 18}, require.NoError},
+		{"ufixed257x18", args{"ufixed257x18"}, nil, hasError("invalid fixed point type \"ufixed257x18\": bits size 257 is bigger than 256")},
+		{"ufixed262x18", args{"ufixed262x18"}, nil, hasError("invalid fixed point type \"ufixed262x18\": bits size 262 is bigger than 256")},
 
 		{"bytes0", args{"bytes0"}, nil, hasError("invalid fixed bytes type \"bytes0\": bits size 0 is lower than 1")},
 		{"bytes1", args{"bytes1"}, FixedSizeBytesType{ByteSize: 1}, require.NoError},
