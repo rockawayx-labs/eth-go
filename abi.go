@@ -34,26 +34,72 @@ type ABI struct {
 	ConstructorsByNameMap map[string][]*MethodDef
 }
 
-func (a *ABI) FindLog(topic []byte) []*LogEventDef {
-	zlog.Info("looking for log event by topic", zap.Stringer("topic", Hash(topic)))
+// Deprecated Use FindLogByTopic
+func (a *ABI) FindLog(topic []byte) *LogEventDef {
+	return a.FindLogByTopic(topic)
+}
+
+// FindLogByTopic finds the first log with the give `topic`. Multiple events could have the
+// same topic, use `FindLogByTopic` to get them all.
+func (a *ABI) FindLogByTopic(topic []byte) *LogEventDef {
+	zlog.Info("looking for first log by topic", zap.Stringer("topic", Hash(topic)))
+
+	return firstOr(a.LogEventsMap[string(topic)], nil)
+}
+
+// FindLogByTopic returns **all**  logs with the give `topic`.
+func (a *ABI) FindLogsByTopic(topic []byte) []*LogEventDef {
+	zlog.Info("looking for all logs by topic", zap.Stringer("topic", Hash(topic)))
 
 	return a.LogEventsMap[string(topic)]
 }
 
-func (a *ABI) FindLogByName(name string) []*LogEventDef {
-	zlog.Info("looking for log by name", zap.String("event_name", name))
+// FindLogByName finds the first log with the give `topic`. Multiple events could have the
+// same topic, use `FindLogsByName` to get them all.
+func (a *ABI) FindLogByName(name string) *LogEventDef {
+	zlog.Info("looking for first log by name", zap.String("event_name", name))
+
+	return firstOr(a.LogEventsByNameMap[name], nil)
+}
+
+// FindLogsByName returns **all** logs with the give `topic`.
+func (a *ABI) FindLogsByName(name string) []*LogEventDef {
+	zlog.Info("looking for all logs by name", zap.String("event_name", name))
 
 	return a.LogEventsByNameMap[name]
 }
 
-func (a *ABI) FindFunction(functionHash []byte) []*MethodDef {
-	zlog.Info("looking for function by hash", zap.Stringer("method_hash", Hash(functionHash)))
-
-	return a.FunctionsMap[string(functionHash)]
+// Deprecated: Use FindFunctionByHash
+func (a *ABI) FindFunction(functionHash []byte) *MethodDef {
+	return a.FindFunctionByHash(functionHash)
 }
 
-func (a *ABI) FindFunctionByName(name string) []*MethodDef {
+// FindFunctionByHash finds the function with the give `hash`.
+func (a *ABI) FindFunctionByHash(functionHash []byte) *MethodDef {
+	zlog.Info("looking for first function by hash", zap.Stringer("method_hash", Hash(functionHash)))
+
+	return firstOr(a.FunctionsMap[string(functionHash)], nil)
+}
+
+// FindFunctionByName finds the first function with the give `name`. Multiple functions could have the
+// same name, use `FindFunctionsByName` to get them all.
+func (a *ABI) FindFunctionByName(name string) *MethodDef {
+	zlog.Info("looking for function by name", zap.Stringer("method_name", Hash(name)))
+
+	return firstOr(a.FunctionsByNameMap[name], nil)
+}
+
+// FindFunctionsByName returns **all** functions with the give `name`.
+func (a *ABI) FindFunctionsByName(name string) []*MethodDef {
 	zlog.Info("looking for function by name", zap.Stringer("method_name", Hash(name)))
 
 	return a.FunctionsByNameMap[name]
+}
+
+func firstOr[T any](elements []T, defaultValue T) T {
+	if len(elements) == 0 {
+		return defaultValue
+	}
+
+	return elements[0]
 }
