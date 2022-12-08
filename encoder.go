@@ -324,8 +324,8 @@ func (e *Encoder) writeElement(typeName string, components []*StructComponent, i
 // to resolve the struct components. Here all the future types that we should handle:
 //
 // - Go struct and reflection to resolve the Go fields against the components
-// - `map[string]interface{}`` to resolve the Go fields against the components
-// - `[]interface{}`` to resolve the element against the components
+// - `map[string]interface{}“ to resolve the Go fields against the components
+// - `[]interface{}“ to resolve the element against the components
 //
 // **Important** Right now, only []interface{} is supported.
 func (e *Encoder) writeTuple(structName string, components []*StructComponent, in interface{}) error {
@@ -416,7 +416,7 @@ func (e *Encoder) writeComponent(structName string, component *StructComponent, 
 		zlog.Debug("about to write struct component", zap.Stringer("component", component), zap.String("input_type", fmt.Sprintf("%T", in)))
 	}
 
-	if err := e.writeElement(component.Type, nil, in); err != nil {
+	if err := e.writeElement(component.TypeName, nil, in); err != nil {
 		return fmt.Errorf(`unable to write "%s#%s: %w"`, structName, component.Name, err)
 	}
 

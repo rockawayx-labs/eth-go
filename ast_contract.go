@@ -76,7 +76,7 @@ func createFunctionDefinition(node map[string]interface{}) (*MethodDef, error) {
 	//case "fallback":
 	//case "receive":
 	default:
-		return nil, fmt.Errorf("Expected 'kind' to be one of [constructor, function, fallback, receive]: %q", nodeKind)
+		return nil, fmt.Errorf("expected 'kind' to be one of [constructor, function, fallback, receive] but got %q", nodeKind)
 	}
 
 }

@@ -38,6 +38,7 @@ type LogEventDef struct {
 type LogParameter struct {
 	Name     string
 	TypeName string
+	Type     SolidityType
 	Indexed  bool
 
 	// Components represents that struct fields of a particular tuple. Only
@@ -69,7 +70,7 @@ func (f *LogEventDef) NewEvent(args ...interface{}) *LogEvent {
 	return event
 }
 
-// NewCallFromString works exactly like `NewCall`` except that it
+// NewCallFromString works exactly like `NewCall“ except that it
 // actually assumes all arguments are string version of the actual
 // Ethereum types defined by the method and append them to the Data
 // slice by calling `AppendArgFromString` which converts the string

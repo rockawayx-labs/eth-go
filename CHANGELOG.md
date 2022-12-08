@@ -32,6 +32,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added improved type information on `LogEventDef`.
+
+- Added improved type information on `MethodDef`.
+
+- Added improved type information on `StructComponent`.
+
 - Added `ABI#FindLogsByTopic` to find all logs with a given topic.
 
 - Added `ABI#FindLogsByName` to find all logs with a given name.

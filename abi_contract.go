@@ -54,7 +54,11 @@ func parseABIFromReader(reader io.Reader) (*ABI, error) {
 
 	for _, decl := range declarations {
 		if decl.Type == DeclarationTypeFunction {
-			methodDef := decl.toFunctionDef()
+			methodDef, err := decl.toFunctionDef()
+			if err != nil {
+				return nil, fmt.Errorf("invalid method %q: %w", decl.Name, err)
+			}
+
 			methodID := string(methodDef.MethodID())
 
 			abi.FunctionsMap[methodID] = append(abi.FunctionsMap[methodID], methodDef)
@@ -62,7 +66,11 @@ func parseABIFromReader(reader io.Reader) (*ABI, error) {
 		}
 
 		if decl.Type == DeclarationTypeEvent {
-			logEventDef := decl.toLogEventDef()
+			logEventDef, err := decl.toLogEventDef()
+			if err != nil {
+				return nil, fmt.Errorf("invalid log event %q: %w", decl.Name, err)
+			}
+
 			logID := string(logEventDef.LogID())
 
 			abi.LogEventsMap[logID] = append(abi.LogEventsMap[logID], logEventDef)
@@ -109,7 +117,7 @@ type declaration struct {
 	Anonymous bool `json:"anonymous,omitempty"`
 }
 
-func (d *declaration) toFunctionDef() *MethodDef {
+func (d *declaration) toFunctionDef() (*MethodDef, error) {
 	out := &MethodDef{}
 	out.Name = d.Name
 	out.StateMutability = d.StateMutability
@@ -125,11 +133,22 @@ func (d *declaration) toFunctionDef() *MethodDef {
 	if len(d.Inputs) > 0 {
 		out.Parameters = make([]*MethodParameter, len(d.Inputs))
 		for i, input := range d.Inputs {
+			parsedType, err := ParseType(input.Type)
+			if err != nil {
+				return nil, fmt.Errorf("invalid input parameter %q type: %w", input.Name, err)
+			}
+
+			structComponents, err := toStructComponents(input.Components)
+			if err != nil {
+				return nil, fmt.Errorf("invalid input %q struct component: %w", input.Name, err)
+			}
+
 			out.Parameters[i] = &MethodParameter{
 				Name:         input.Name,
 				TypeName:     input.Type,
+				Type:         parsedType,
 				InternalType: input.InternalType,
-				Components:   input.Components,
+				Components:   structComponents,
 			}
 		}
 	}
@@ -137,32 +156,71 @@ func (d *declaration) toFunctionDef() *MethodDef {
 	if len(d.Outputs) > 0 {
 		out.ReturnParameters = make([]*MethodParameter, len(d.Outputs))
 		for i, output := range d.Outputs {
+			parsedType, err := ParseType(output.Type)
+			if err != nil {
+				return nil, fmt.Errorf("invalid output parameter %q type: %w", output.Name, err)
+			}
+
+			structComponents, err := toStructComponents(output.Components)
+			if err != nil {
+				return nil, fmt.Errorf("invalid output %q struct component: %w", output.Name, err)
+			}
+
 			out.ReturnParameters[i] = &MethodParameter{
 				Name:         output.Name,
 				TypeName:     output.Type,
+				Type:         parsedType,
 				InternalType: output.InternalType,
-				Components:   output.Components,
+				Components:   structComponents,
 			}
 		}
 	}
 
-	return out
+	return out, nil
 }
 
-func (d *declaration) toLogEventDef() *LogEventDef {
+func toStructComponents(in []*structComponent) (out []*StructComponent, err error) {
+	if len(in) == 0 {
+		return
+	}
+
+	out = make([]*StructComponent, len(in))
+	for i, component := range in {
+		parsedType, err := ParseType(component.Type)
+		if err != nil {
+			return nil, fmt.Errorf("invalid component %q type: %w", component.Name, err)
+		}
+
+		out[i] = &StructComponent{
+			InternalType: component.InternalType,
+			Name:         component.Name,
+			TypeName:     component.Type,
+			Type:         parsedType,
+		}
+	}
+	return out, nil
+}
+
+func (d *declaration) toLogEventDef() (*LogEventDef, error) {
 	out := &LogEventDef{}
 	out.Name = d.Name
 
 	out.Parameters = make([]*LogParameter, len(d.Inputs))
 	for i, input := range d.Inputs {
+		parsedType, err := ParseType(input.Type)
+		if err != nil {
+			return nil, fmt.Errorf("invalid parameter %q type: %w", input.Name, err)
+		}
+
 		out.Parameters[i] = &LogParameter{
 			Name:     input.Name,
 			TypeName: input.Type,
+			Type:     parsedType,
 			Indexed:  input.Indexed,
 		}
 	}
 
-	return out
+	return out, nil
 }
 
 type typeInfo struct {
@@ -170,15 +228,15 @@ type typeInfo struct {
 	Name         string             `json:"name"`
 	Type         string             `json:"type"`
 	Indexed      bool               `json:"indexed"`
-	Components   []*StructComponent `json:"components,omitempty"`
+	Components   []*structComponent `json:"components,omitempty"`
 }
 
-type StructComponent struct {
+type structComponent struct {
 	InternalType string `json:"internalType"`
 	Name         string `json:"name"`
 	Type         string `json:"type"`
 }
 
-func (c *StructComponent) String() string {
+func (c *structComponent) String() string {
 	return fmt.Sprintf("%s %s (%s)", c.Type, c.Name, c.InternalType)
 }

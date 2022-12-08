@@ -25,6 +25,10 @@ import (
 )
 
 func TestABIContract_Parse(t *testing.T) {
+	var arrayOfStructType = ArrayType{ElementType: StructType{}}
+	var uint64Type = UnsignedIntegerType{BitsSize: 64, ByteSize: 8}
+	var uint256Type = UnsignedIntegerType{BitsSize: 256, ByteSize: 32}
+
 	tests := []struct {
 		name        string
 		expected    *ABI
@@ -39,7 +43,7 @@ func TestABIContract_Parse(t *testing.T) {
 					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {{
 						Name: "PairCreated",
 						Parameters: []*LogParameter{
-							{Name: "token0", TypeName: "address", Indexed: true},
+							{Name: "token0", TypeName: "address", Type: AddressType{}, Indexed: true},
 						},
 					}},
 				},
@@ -47,7 +51,7 @@ func TestABIContract_Parse(t *testing.T) {
 					"PairCreated": {{
 						Name: "PairCreated",
 						Parameters: []*LogParameter{
-							{Name: "token0", TypeName: "address", Indexed: true},
+							{Name: "token0", TypeName: "address", Type: AddressType{}, Indexed: true},
 						},
 					}},
 				},
@@ -62,10 +66,10 @@ func TestABIContract_Parse(t *testing.T) {
 					string(b(t, "b961c32d")): {{
 						Name: "tupleAlone",
 						Parameters: []*MethodParameter{
-							{Name: "period", TypeName: "tuple", InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
-								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
-								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
-								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							{Name: "period", TypeName: "tuple", Type: StructType{}, InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", TypeName: "uint256", Type: uint256Type, InternalType: "uint256"},
+								{Name: "fromBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
+								{Name: "toBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
 							}},
 						},
 						StateMutability: StateMutabilityPure,
@@ -75,10 +79,10 @@ func TestABIContract_Parse(t *testing.T) {
 					"tupleAlone": {{
 						Name: "tupleAlone",
 						Parameters: []*MethodParameter{
-							{Name: "period", TypeName: "tuple", InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
-								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
-								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
-								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							{Name: "period", TypeName: "tuple", Type: StructType{}, InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", TypeName: "uint256", Type: uint256Type, InternalType: "uint256"},
+								{Name: "fromBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
+								{Name: "toBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
 							}},
 						},
 						StateMutability: StateMutabilityPure,
@@ -95,10 +99,10 @@ func TestABIContract_Parse(t *testing.T) {
 					string(b(t, "15eb963d")): {{
 						Name: "tupleArray",
 						Parameters: []*MethodParameter{
-							{Name: "periods", TypeName: "tuple[]", InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
-								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
-								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
-								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							{Name: "periods", TypeName: "tuple[]", Type: arrayOfStructType, InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", TypeName: "uint256", Type: uint256Type, InternalType: "uint256"},
+								{Name: "fromBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
+								{Name: "toBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
 							}},
 						},
 						StateMutability: StateMutabilityView,
@@ -108,10 +112,10 @@ func TestABIContract_Parse(t *testing.T) {
 					"tupleArray": {{
 						Name: "tupleArray",
 						Parameters: []*MethodParameter{
-							{Name: "periods", TypeName: "tuple[]", InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
-								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
-								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
-								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							{Name: "periods", TypeName: "tuple[]", Type: arrayOfStructType, InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", TypeName: "uint256", Type: uint256Type, InternalType: "uint256"},
+								{Name: "fromBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
+								{Name: "toBlockNum", TypeName: "uint64", Type: uint64Type, InternalType: "uint64"},
 							}},
 						},
 						StateMutability: StateMutabilityView,
@@ -131,7 +135,7 @@ func TestABIContract_Parse(t *testing.T) {
 						{
 							Name: "PairCreated",
 							Parameters: []*LogParameter{
-								{Name: "second", TypeName: "bytes32", Indexed: false},
+								{Name: "second", TypeName: "bytes32", Type: FixedSizeBytesType{ByteSize: 32}, Indexed: false},
 							},
 						},
 					},
@@ -139,13 +143,13 @@ func TestABIContract_Parse(t *testing.T) {
 						{
 							Name: "PairCreated",
 							Parameters: []*LogParameter{
-								{Name: "first", TypeName: "address", Indexed: true},
+								{Name: "first", TypeName: "address", Type: AddressType{}, Indexed: true},
 							},
 						},
 						{
 							Name: "PairCreated",
 							Parameters: []*LogParameter{
-								{Name: "third", TypeName: "address", Indexed: false},
+								{Name: "third", TypeName: "address", Type: AddressType{}, Indexed: false},
 							},
 						},
 					},
@@ -155,19 +159,19 @@ func TestABIContract_Parse(t *testing.T) {
 						{
 							Name: "PairCreated",
 							Parameters: []*LogParameter{
-								{Name: "first", TypeName: "address", Indexed: true},
+								{Name: "first", TypeName: "address", Type: AddressType{}, Indexed: true},
 							},
 						},
 						{
 							Name: "PairCreated",
 							Parameters: []*LogParameter{
-								{Name: "second", TypeName: "bytes32", Indexed: false},
+								{Name: "second", TypeName: "bytes32", Type: FixedSizeBytesType{ByteSize: 32}, Indexed: false},
 							},
 						},
 						{
 							Name: "PairCreated",
 							Parameters: []*LogParameter{
-								{Name: "third", TypeName: "address", Indexed: false},
+								{Name: "third", TypeName: "address", Type: AddressType{}, Indexed: false},
 							},
 						},
 					},

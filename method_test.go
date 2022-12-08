@@ -185,9 +185,9 @@ func TestMethodCallData_AppendArgFromString(t *testing.T) {
 				Name: "tuple",
 				Parameters: []*MethodParameter{
 					{Name: "period", TypeName: "tuple", Components: []*StructComponent{
-						{Name: "tokenID", Type: "uint256"},
-						{Name: "fromBlockNum", Type: "uint64"},
-						{Name: "toBlockNum", Type: "uint64"},
+						{Name: "tokenID", TypeName: "uint256"},
+						{Name: "fromBlockNum", TypeName: "uint64"},
+						{Name: "toBlockNum", TypeName: "uint64"},
 					}},
 				},
 			},
@@ -207,9 +207,9 @@ func TestMethodCallData_AppendArgFromString(t *testing.T) {
 				Name: "tupleArray",
 				Parameters: []*MethodParameter{
 					{Name: "periods", TypeName: "tuple[]", Components: []*StructComponent{
-						{Name: "tokenID", Type: "uint256"},
-						{Name: "fromBlockNum", Type: "uint64"},
-						{Name: "toBlockNum", Type: "uint64"},
+						{Name: "tokenID", TypeName: "uint256"},
+						{Name: "fromBlockNum", TypeName: "uint64"},
+						{Name: "toBlockNum", TypeName: "uint64"},
 					}},
 				},
 			},

@@ -257,10 +257,10 @@ func TestEncoder_Write(t *testing.T) {
 			name:     "tuple from interface slice",
 			typeName: "tuple",
 			components: []*StructComponent{
-				{Name: "tokenID", Type: "uint256"},
-				{Name: "tokenType", Type: "uint256"},
-				{Name: "fromBlockNumber", Type: "uint64"},
-				{Name: "toBlockNumber", Type: "uint64"},
+				{Name: "tokenID", TypeName: "uint256"},
+				{Name: "tokenType", TypeName: "uint256"},
+				{Name: "fromBlockNumber", TypeName: "uint64"},
+				{Name: "toBlockNumber", TypeName: "uint64"},
 			},
 			in: []interface{}{big.NewInt(1), big.NewInt(2), uint64(3), uint64(4)},
 			expectBytes: []byte{
@@ -289,10 +289,10 @@ func TestEncoder_Write(t *testing.T) {
 			name:     "tuple from interface map",
 			typeName: "tuple",
 			components: []*StructComponent{
-				{Name: "tokenID", Type: "uint256"},
-				{Name: "tokenType", Type: "uint256"},
-				{Name: "fromBlockNumber", Type: "uint64"},
-				{Name: "toBlockNumber", Type: "uint64"},
+				{Name: "tokenID", TypeName: "uint256"},
+				{Name: "tokenType", TypeName: "uint256"},
+				{Name: "fromBlockNumber", TypeName: "uint64"},
+				{Name: "toBlockNumber", TypeName: "uint64"},
 			},
 			in: map[string]interface{}{
 				"tokenID":         big.NewInt(1),
@@ -326,10 +326,10 @@ func TestEncoder_Write(t *testing.T) {
 			name:     "tuple from struct",
 			typeName: "tuple",
 			components: []*StructComponent{
-				{Name: "tokenID", Type: "uint256"},
-				{Name: "tokenType", Type: "uint8"},
-				{Name: "fromBlockNumber", Type: "uint64"},
-				{Name: "toBlockNumber", Type: "uint64"},
+				{Name: "tokenID", TypeName: "uint256"},
+				{Name: "tokenType", TypeName: "uint8"},
+				{Name: "fromBlockNumber", TypeName: "uint64"},
+				{Name: "toBlockNumber", TypeName: "uint64"},
 			},
 			in: period{
 				TokenID:         big.NewInt(1),
@@ -363,10 +363,10 @@ func TestEncoder_Write(t *testing.T) {
 			name:     "tuple from struct ptr",
 			typeName: "tuple",
 			components: []*StructComponent{
-				{Name: "tokenID", Type: "uint256"},
-				{Name: "tokenType", Type: "uint8"},
-				{Name: "fromBlockNumber", Type: "uint64"},
-				{Name: "toBlockNumber", Type: "uint64"},
+				{Name: "tokenID", TypeName: "uint256"},
+				{Name: "tokenType", TypeName: "uint8"},
+				{Name: "fromBlockNumber", TypeName: "uint64"},
+				{Name: "toBlockNumber", TypeName: "uint64"},
 			},
 			in: &period{
 				TokenID:         big.NewInt(1),
@@ -655,9 +655,9 @@ func TestEncoder_WriteArray(t *testing.T) {
 			name:     "tuple",
 			typeName: "tuple[]",
 			components: []*StructComponent{
-				{Type: "uint256"},
-				{Type: "uint64"},
-				{Type: "uint64"},
+				{TypeName: "uint256"},
+				{TypeName: "uint64"},
+				{TypeName: "uint64"},
 			},
 			in: []interface{}{[]interface{}{big.NewInt(0x1AB), uint64(0x1CD), uint64(0x1EF)}},
 			expectBytes: []byte{
@@ -774,9 +774,9 @@ func TestEncoder_WriteTuple(t *testing.T) {
 			Name: "getOnePeriod",
 			Parameters: []*MethodParameter{
 				{Name: "period", TypeName: "tuple", InternalType: "struct Period", TypeMutability: "", Components: []*StructComponent{
-					{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
-					{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
-					{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+					{Name: "tokenID", TypeName: "uint256", InternalType: "uint256"},
+					{Name: "fromBlockNum", TypeName: "uint64", InternalType: "uint64"},
+					{Name: "toBlockNum", TypeName: "uint64", InternalType: "uint64"},
 				}},
 			},
 		},
@@ -818,9 +818,9 @@ func TestEncoder_WriteTupleArray(t *testing.T) {
 			Name: "tupleArray",
 			Parameters: []*MethodParameter{
 				{Name: "periods", TypeName: "tuple[]", InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
-					{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
-					{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
-					{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+					{Name: "tokenID", TypeName: "uint256", InternalType: "uint256"},
+					{Name: "fromBlockNum", TypeName: "uint64", InternalType: "uint64"},
+					{Name: "toBlockNum", TypeName: "uint64", InternalType: "uint64"},
 				}},
 			},
 		},

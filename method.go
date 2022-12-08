@@ -27,14 +27,14 @@ import (
 
 //go:generate go-enum -f=$GOFILE --lower --marshal --names
 
-//
 // ENUM(
-//   Pure
-//   View
-//   NonPayable
-//   Payable
-// )
 //
+//	Pure
+//	View
+//	NonPayable
+//	Payable
+//
+// )
 type StateMutability int
 
 type MethodParameter struct {
@@ -46,6 +46,8 @@ type MethodParameter struct {
 	// and struct type is always `tuple` with an filled up `Components`
 	// defining the struct.
 	TypeName string
+	// Type represents the parsed type of this parameter.
+	Type SolidityType
 	// TypeMutability is unclear, requires more investigation, I don't recall
 	// to which Solidity concept it refers to.
 	TypeMutability string
@@ -84,7 +86,7 @@ func (p *MethodParameter) Signature() string {
 		// FIXME: Need to be recursive, let's add only once someone request it
 		componentTypeNames := make([]string, len(p.Components))
 		for i, component := range p.Components {
-			componentTypeNames[i] = component.Type
+			componentTypeNames[i] = component.TypeName
 		}
 
 		typeName = strings.Replace(typeName, "tuple", fmt.Sprintf("(%s)", strings.Join(componentTypeNames, ",")), 1)
@@ -143,7 +145,7 @@ func (f *MethodDef) NewCall(args ...interface{}) *MethodCall {
 	return call
 }
 
-// NewCallFromString works exactly like `NewCall`` except that it
+// NewCallFromString works exactly like `NewCall“ except that it
 // actually assumes all arguments are string version of the actual
 // Ethereum types defined by the method and append them to the Data
 // slice by calling `AppendArgFromString` which converts the string
@@ -462,7 +464,7 @@ func tupleInterfaceSliceToDataType(in []interface{}, components []*StructCompone
 
 	elements := make([]interface{}, len(components))
 	for i, component := range components {
-		elements[i], err = argToDataType(in[i], component.Type, nil)
+		elements[i], err = argToDataType(in[i], component.TypeName, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to transfrom struct component %s from input type %T: %w", component.Name, in[i], err)
 		}
@@ -496,7 +498,7 @@ func tupleMapSliceToDataType(in map[string]interface{}, components []*StructComp
 			return fmt.Errorf(`struct component %s was not found in input "map[string]interface{}" (keys %q)`, component.Name, strings.Join(mapStringInterfaceKeys(in), ", ")), nil
 		}
 
-		elements[i], err = argToDataType(fieldIn, component.Type, nil)
+		elements[i], err = argToDataType(fieldIn, component.TypeName, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to transfrom struct component %s from input type %T: %w", component.Name, fieldIn, err)
 		}
