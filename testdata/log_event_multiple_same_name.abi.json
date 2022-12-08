@@ -1,0 +1,38 @@
+[
+  {
+    "name": "PairCreated",
+    "type": "event",
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "first",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "name": "PairCreated",
+    "type": "event",
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "second",
+        "type": "bytes32"
+      }
+    ]
+  },
+  {
+    "name": "PairCreated",
+    "type": "event",
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "third",
+        "type": "address"
+      }
+    ]
+  }
+]

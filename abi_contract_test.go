@@ -33,14 +33,23 @@ func TestABIContract_Parse(t *testing.T) {
 		{
 			"log event indexed",
 			&ABI{
-				FunctionsMap: map[string]*MethodDef{},
-				LogEventsMap: map[string]*LogEventDef{
-					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {
+				FunctionsMap:       map[string][]*MethodDef{},
+				FunctionsByNameMap: map[string][]*MethodDef{},
+				LogEventsMap: map[string][]*LogEventDef{
+					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {{
 						Name: "PairCreated",
 						Parameters: []*LogParameter{
 							{Name: "token0", TypeName: "address", Indexed: true},
 						},
-					},
+					}},
+				},
+				LogEventsByNameMap: map[string][]*LogEventDef{
+					"PairCreated": {{
+						Name: "PairCreated",
+						Parameters: []*LogParameter{
+							{Name: "token0", TypeName: "address", Indexed: true},
+						},
+					}},
 				},
 			},
 			nil,
@@ -49,8 +58,8 @@ func TestABIContract_Parse(t *testing.T) {
 		{
 			"struct tuple alone",
 			&ABI{
-				FunctionsMap: map[string]*MethodDef{
-					string(b(t, "b961c32d")): {
+				FunctionsMap: map[string][]*MethodDef{
+					string(b(t, "b961c32d")): {{
 						Name: "tupleAlone",
 						Parameters: []*MethodParameter{
 							{Name: "period", TypeName: "tuple", InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
@@ -60,7 +69,20 @@ func TestABIContract_Parse(t *testing.T) {
 							}},
 						},
 						StateMutability: StateMutabilityPure,
-					},
+					}},
+				},
+				FunctionsByNameMap: map[string][]*MethodDef{
+					"tupleAlone": {{
+						Name: "tupleAlone",
+						Parameters: []*MethodParameter{
+							{Name: "period", TypeName: "tuple", InternalType: "struct ClaimPeriod", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
+								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
+								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							}},
+						},
+						StateMutability: StateMutabilityPure,
+					}},
 				},
 			},
 			nil,
@@ -69,8 +91,8 @@ func TestABIContract_Parse(t *testing.T) {
 		{
 			"struct tuple array",
 			&ABI{
-				FunctionsMap: map[string]*MethodDef{
-					string(b(t, "15eb963d")): {
+				FunctionsMap: map[string][]*MethodDef{
+					string(b(t, "15eb963d")): {{
 						Name: "tupleArray",
 						Parameters: []*MethodParameter{
 							{Name: "periods", TypeName: "tuple[]", InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
@@ -80,6 +102,74 @@ func TestABIContract_Parse(t *testing.T) {
 							}},
 						},
 						StateMutability: StateMutabilityView,
+					}},
+				},
+				FunctionsByNameMap: map[string][]*MethodDef{
+					"tupleArray": {{
+						Name: "tupleArray",
+						Parameters: []*MethodParameter{
+							{Name: "periods", TypeName: "tuple[]", InternalType: "struct ClaimPeriod[]", TypeMutability: "", Components: []*StructComponent{
+								{Name: "tokenID", Type: "uint256", InternalType: "uint256"},
+								{Name: "fromBlockNum", Type: "uint64", InternalType: "uint64"},
+								{Name: "toBlockNum", Type: "uint64", InternalType: "uint64"},
+							}},
+						},
+						StateMutability: StateMutabilityView,
+					}},
+				},
+			},
+			nil,
+		},
+
+		{
+			"log event multiple same name",
+			&ABI{
+				FunctionsMap:       map[string][]*MethodDef{},
+				FunctionsByNameMap: map[string][]*MethodDef{},
+				LogEventsMap: map[string][]*LogEventDef{
+					string(b(t, "02508328cccf110f3046b1f9c5a6a27376177a48224fb84fae5af4956a3e95b7")): {
+						{
+							Name: "PairCreated",
+							Parameters: []*LogParameter{
+								{Name: "second", TypeName: "bytes32", Indexed: false},
+							},
+						},
+					},
+					string(b(t, "b14a725aeeb25d591b81b16b4c5b25403dd8867bdd1876fa787867f566206be1")): {
+						{
+							Name: "PairCreated",
+							Parameters: []*LogParameter{
+								{Name: "first", TypeName: "address", Indexed: true},
+							},
+						},
+						{
+							Name: "PairCreated",
+							Parameters: []*LogParameter{
+								{Name: "third", TypeName: "address", Indexed: false},
+							},
+						},
+					},
+				},
+				LogEventsByNameMap: map[string][]*LogEventDef{
+					"PairCreated": {
+						{
+							Name: "PairCreated",
+							Parameters: []*LogParameter{
+								{Name: "first", TypeName: "address", Indexed: true},
+							},
+						},
+						{
+							Name: "PairCreated",
+							Parameters: []*LogParameter{
+								{Name: "second", TypeName: "bytes32", Indexed: false},
+							},
+						},
+						{
+							Name: "PairCreated",
+							Parameters: []*LogParameter{
+								{Name: "third", TypeName: "address", Indexed: false},
+							},
+						},
 					},
 				},
 			},
@@ -127,12 +217,30 @@ func TestABIContract_ParseFile(t *testing.T) {
 }
 
 func abiEquals(t *testing.T, expected *ABI, actual *ABI) {
+	if len(expected.LogEventsByNameMap) != len(actual.LogEventsByNameMap) {
+		require.Equal(t, expected.LogEventsByNameMap, actual.LogEventsByNameMap)
+	} else {
+		for key, value := range expected.LogEventsByNameMap {
+			assert.Contains(t, actual.LogEventsByNameMap, key, "log event name %s", key)
+			assert.Equal(t, value, actual.LogEventsByNameMap[key])
+		}
+	}
+
 	if len(expected.LogEventsMap) != len(actual.LogEventsMap) {
 		require.Equal(t, expected.LogEventsMap, actual.LogEventsMap)
 	} else {
 		for key, value := range expected.LogEventsMap {
 			assert.Contains(t, actual.LogEventsMap, key, "log event id %s", key)
 			assert.Equal(t, value, actual.LogEventsMap[key])
+		}
+	}
+
+	if len(expected.FunctionsByNameMap) != len(actual.FunctionsByNameMap) {
+		require.Equal(t, expected.FunctionsByNameMap, actual.FunctionsByNameMap)
+	} else {
+		for key, value := range expected.FunctionsByNameMap {
+			assert.Contains(t, actual.FunctionsByNameMap, key, "method name %s", key)
+			assert.Equal(t, value, actual.FunctionsByNameMap[key])
 		}
 	}
 

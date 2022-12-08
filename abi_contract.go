@@ -45,24 +45,28 @@ func parseABIFromReader(reader io.Reader) (*ABI, error) {
 	}
 
 	abi := &ABI{
-		LogEventsMap: map[string]*LogEventDef{},
-		FunctionsMap: map[string]*MethodDef{},
+		LogEventsMap: map[string][]*LogEventDef{},
+		FunctionsMap: map[string][]*MethodDef{},
 
-		LogEventsByNameMap: map[string]*LogEventDef{},
-		FunctionsByNameMap: map[string]*MethodDef{},
+		LogEventsByNameMap: map[string][]*LogEventDef{},
+		FunctionsByNameMap: map[string][]*MethodDef{},
 	}
 
 	for _, decl := range declarations {
 		if decl.Type == DeclarationTypeFunction {
 			methodDef := decl.toFunctionDef()
-			abi.FunctionsMap[string(methodDef.MethodID())] = methodDef
-			abi.FunctionsByNameMap[methodDef.Name] = methodDef
+			methodID := string(methodDef.MethodID())
+
+			abi.FunctionsMap[methodID] = append(abi.FunctionsMap[methodID], methodDef)
+			abi.FunctionsByNameMap[methodDef.Name] = append(abi.FunctionsByNameMap[methodDef.Name], methodDef)
 		}
 
 		if decl.Type == DeclarationTypeEvent {
 			logEventDef := decl.toLogEventDef()
-			abi.LogEventsMap[string(logEventDef.LogID())] = logEventDef
-			abi.LogEventsByNameMap[logEventDef.Name] = logEventDef
+			logID := string(logEventDef.LogID())
+
+			abi.LogEventsMap[logID] = append(abi.LogEventsMap[logID], logEventDef)
+			abi.LogEventsByNameMap[logEventDef.Name] = append(abi.LogEventsByNameMap[logEventDef.Name], logEventDef)
 		}
 	}
 
@@ -71,16 +75,16 @@ func parseABIFromReader(reader io.Reader) (*ABI, error) {
 
 //go:generate go-enum -f=$GOFILE --lower --marshal --names
 
-//
 // ENUM(
-//   Function
-//   Constructor
-//   Receive
-//   Fallback
-//   Event
-//   Error
-// )
 //
+//	Function
+//	Constructor
+//	Receive
+//	Fallback
+//	Event
+//	Error
+//
+// )
 type DeclarationType int
 
 // declaration is a generic struct output for each ABI element of an Ethereum contact

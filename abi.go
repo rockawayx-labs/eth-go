@@ -25,34 +25,34 @@ import "go.uber.org/zap"
 // mapping and only the "last seen" event wins. This will require a refactor and will trickle
 // down in a few places.
 type ABI struct {
-	LogEventsMap    map[string]*LogEventDef
-	FunctionsMap    map[string]*MethodDef
-	ConstructorsMap map[string]*MethodDef
+	LogEventsMap    map[string][]*LogEventDef
+	FunctionsMap    map[string][]*MethodDef
+	ConstructorsMap map[string][]*MethodDef
 
-	LogEventsByNameMap    map[string]*LogEventDef
-	FunctionsByNameMap    map[string]*MethodDef
-	ConstructorsByNameMap map[string]*MethodDef
+	LogEventsByNameMap    map[string][]*LogEventDef
+	FunctionsByNameMap    map[string][]*MethodDef
+	ConstructorsByNameMap map[string][]*MethodDef
 }
 
-func (a *ABI) FindLog(topic []byte) *LogEventDef {
+func (a *ABI) FindLog(topic []byte) []*LogEventDef {
 	zlog.Info("looking for log event by topic", zap.Stringer("topic", Hash(topic)))
 
 	return a.LogEventsMap[string(topic)]
 }
 
-func (a *ABI) FindLogByName(name string) *LogEventDef {
+func (a *ABI) FindLogByName(name string) []*LogEventDef {
 	zlog.Info("looking for log by name", zap.String("event_name", name))
 
 	return a.LogEventsByNameMap[name]
 }
 
-func (a *ABI) FindFunction(functionHash []byte) *MethodDef {
+func (a *ABI) FindFunction(functionHash []byte) []*MethodDef {
 	zlog.Info("looking for function by hash", zap.Stringer("method_hash", Hash(functionHash)))
 
 	return a.FunctionsMap[string(functionHash)]
 }
 
-func (a *ABI) FindFunctionByName(name string) *MethodDef {
+func (a *ABI) FindFunctionByName(name string) []*MethodDef {
 	zlog.Info("looking for function by name", zap.Stringer("method_name", Hash(name)))
 
 	return a.FunctionsByNameMap[name]
