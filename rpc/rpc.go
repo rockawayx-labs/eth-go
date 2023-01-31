@@ -405,13 +405,27 @@ func (c *Client) GetBalance(ctx context.Context, accountAddr eth.Address, at *Bl
 
 	v, ok := new(big.Int).SetString(strings.TrimPrefix(resp, "0x"), 16)
 	if !ok {
-		return nil, fmt.Errorf("unable to parse balance %s: %w", resp, err)
+		return nil, fmt.Errorf("unable to parse balance %q: %w", resp, err)
 	}
 
 	return &eth.TokenAmount{
 		Amount: v,
 		Token:  eth.ETHToken,
 	}, nil
+}
+
+func (c *Client) GetCode(ctx context.Context, accountAddr eth.Address, at *BlockRef) (eth.Bytes, error) {
+	resp, err := c.DoRequest(ctx, "eth_getCode", []interface{}{accountAddr.Pretty(), atOrLatestIfNil(at)})
+	if err != nil {
+		return nil, fmt.Errorf("unable to perform eth_getCode request: %w", err)
+	}
+
+	v, err := eth.NewBytes(resp)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse code %q: %w", resp, err)
+	}
+
+	return v, nil
 }
 
 func (c *Client) GasPrice(ctx context.Context) (*big.Int, error) {
