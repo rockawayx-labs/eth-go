@@ -41,6 +41,8 @@ func (e *ErrResponse) Error() string {
 // Ganache.
 // These come from https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L486
 
+const JSON_RPC_INVALID_ARGUMENT_ERROR = -32602
+
 var GETH_DETERMINISTIC_ERRORS = []string{
 	"execution reverted",
 	"invalid jump destination",
@@ -73,9 +75,14 @@ const GANACHE_REVERT_MESSAGE = "VM Exception while processing transaction: rever
 //
 // See https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L486
 func IsDeterministicError(err *ErrResponse) bool {
-	return IsGethDeterministicError(err) ||
+	return IsGenericDeterministicError(err) ||
+		IsGethDeterministicError(err) ||
 		IsParityDeterministicError(err) ||
 		IsGanacheDeterministicError(err)
+}
+
+func IsGenericDeterministicError(err *ErrResponse) bool {
+	return err.Code == JSON_RPC_INVALID_ARGUMENT_ERROR
 }
 
 func IsGethDeterministicError(err *ErrResponse) bool {

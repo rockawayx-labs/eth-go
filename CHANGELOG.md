@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- JSON-RPC code `-32602` is now treated as a deterministic error.
+
 - **Breaking** The `ABI` has changed so that multiple events/functions of the name or same id are parsed correctly, in order defined.
 
 ### Deprecated
