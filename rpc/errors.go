@@ -35,12 +35,13 @@ func (e *ErrResponse) Error() string {
 // These come from https://github.com/graphprotocol/graph-node/blob/master/chain/ethereum/src/ethereum_adapter.rs
 
 var GETH_DETERMINISTIC_ERRORS = []string{
-	"execution reverted",
+	"revert",
 	"invalid jump destination",
 	"invalid opcode",
 	"stack limit reached 1024",
 	"stack underflow (",
 	"gas uint64 overflow",
+	"out of gas",
 }
 
 const PARITY_BAD_INSTRUCTION_FE = "Bad instruction fe"
@@ -49,6 +50,9 @@ const PARITY_BAD_JUMP_PREFIX = "Bad jump"
 const PARITY_STACK_LIMIT_PREFIX = "Out of stack"
 const PARITY_VM_EXECUTION_ERROR = -32015
 const PARITY_REVERT_PREFIX = "Reverted 0x"
+
+// const PARITY_OUT_OF_GAS = "Out of gas" // same as geth
+// const XDAI_REVERT = "revert" // same as geth
 
 const GANACHE_VM_EXECUTION_ERROR = -32000
 const GANACHE_REVERT_MESSAGE = "VM Exception while processing transaction: revert"
