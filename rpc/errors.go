@@ -39,7 +39,7 @@ func (e *ErrResponse) Error() string {
 // Try to check if the call was reverted. The JSON-RPC response for reverts is
 // not standardized, so we have ad-hoc checks for each of Geth, Parity and
 // Ganache.
-// These come from https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L486
+// These come from https://github.com/graphprotocol/graph-node/blob/94e93b07554d6e77aa618ac2f0716b70e0af671c/chain/ethereum/src/ethereum_adapter.rs#L500
 
 const JSON_RPC_INVALID_ARGUMENT_ERROR = -32602
 
@@ -50,7 +50,7 @@ var GETH_DETERMINISTIC_ERRORS = []string{
 	"stack limit reached 1024",
 	"stack underflow (",
 	"gas uint64 overflow",
-	// See https://github.com/graphprotocol/graph-node/blob/581ff5cf2978af66c49c91d4bf819b6647173776/chain/ethereum/src/ethereum_adapter.rs#L69 for some reasoning
+	// See https://github.com/graphprotocol/graph-node/blob/94e93b07554d6e77aa618ac2f0716b70e0af671c/chain/ethereum/src/ethereum_adapter.rs#L511 for some reasoning
 	// why `out of gas` is considered deterministic. One thing to remember, from an operator perspective, a minimal amount of `gasCap` is required on the node that
 	// is handling `eth_call`, it must be equal or greater than `gasLimit` we use for the call.
 	"out of gas",
