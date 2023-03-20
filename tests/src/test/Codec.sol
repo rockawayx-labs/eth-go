@@ -339,10 +339,12 @@ contract CodecTest is Test {
         assertEq(logs[0].topics.length, 2);
         assertEq(logs[0].topics[0], keccak256("EventIArrayAddress(address[])"));
 
-        // codec.logBytes(logs[0].topics[1]);
         codec.logBytes(logs[0].data);
 
-        require(false, "");
+        require(
+            bytesEquals(logs[0].data, hex""),
+            "Invalid input encode packed bytes"
+        );
     }
 
     // FIXME: Shared for all tests ..., copied from test/PersonalSigning
@@ -364,11 +366,10 @@ contract CodecTest is Test {
     // Equality means that:
     //  - 'self.length == other.length'
     //  - For 'n' in '[0, self.length)', 'self[n] == other[n]'
-    function bytesEquals(bytes memory self, bytes memory other)
-        internal
-        pure
-        returns (bool equal)
-    {
+    function bytesEquals(
+        bytes memory self,
+        bytes memory other
+    ) internal pure returns (bool equal) {
         if (self.length != other.length) {
             return false;
         }

@@ -5,8 +5,6 @@ contract Codec {
 
     event EventUFixedArraySubDynamic(bytes[2] param0);
 
-    event EventIArrayAddress(address[] indexed param0);
-
     event EventUBytes8UBytes16UBytes24UBytes32(
         bytes8 param0,
         bytes16 param1,
@@ -43,12 +41,7 @@ contract Codec {
 
     function funInt256(int256) public pure {}
 
-    function funInt8Int32Int64Int256(
-        int8,
-        int32,
-        int64,
-        int256
-    ) public pure {}
+    function funInt8Int32Int64Int256(int8, int32, int64, int256) public pure {}
 
     function funString(string memory) public pure {}
 
@@ -71,6 +64,8 @@ contract Codec {
         address[2] memory,
         address[] memory
     ) public pure {}
+
+    event EventIArrayAddress(address[] indexed param0);
 
     function emitEventIArrayAddress() public {
         address[] memory addresses = new address[](2);
