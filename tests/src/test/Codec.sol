@@ -347,6 +347,28 @@ contract CodecTest is Test {
         );
     }
 
+    function testEmitEventUTuple1() public {
+        vm.recordLogs();
+
+        codec.emitEventUTuple1();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 1, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 1);
+        assertEq(logs[0].topics[0], keccak256("EventUTuple1((address))"));
+
+        codec.logBytes(logs[0].data);
+
+        require(
+            bytesEquals(
+                logs[0].data,
+                hex"000000000000000000000000db0de9288cf0713de91371969efcc9969dd94117"
+            ),
+            "Invalid input encode packed bytes"
+        );
+    }
+
     // FIXME: Shared for all tests ..., copied from test/PersonalSigning
     // Compares the 'len' bytes starting at address 'addr' in memory with the 'len'
     // bytes starting at 'addr2'.

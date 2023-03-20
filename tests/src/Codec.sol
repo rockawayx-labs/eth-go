@@ -75,6 +75,20 @@ contract Codec {
         emit EventIArrayAddress(addresses);
     }
 
+    struct Tuple1 {
+        address param0;
+    }
+
+    event EventUTuple1(Tuple1 param0);
+
+    function emitEventUTuple1() public {
+        Tuple1 memory tuple = Tuple1(
+            0xdB0De9288CF0713De91371969efCC9969dd94117
+        );
+
+        emit EventUTuple1(tuple);
+    }
+
     function logBytes(bytes memory data) public pure {
         // Will be recorded automatically by forge, use 'forge test -m <testName> -vvv' to see the results
     }
