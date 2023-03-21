@@ -89,6 +89,26 @@ contract Codec {
         emit EventUTuple1(tuple);
     }
 
+    event EventUArrayBool(bool[] param0);
+
+    function emitEventUArrayBool() public {
+        bool[] memory bools = new bool[](2);
+        bools[0] = true;
+        bools[1] = false;
+
+        emit EventUArrayBool(bools);
+    }
+
+    event EventUFixedArrayString(string[2] param0);
+
+    function emitEventUFixedArrayString() public {
+        string[2] memory strings;
+        strings[0] = "first";
+        strings[1] = "second";
+
+        emit EventUFixedArrayString(strings);
+    }
+
     function logBytes(bytes memory data) public pure {
         // Will be recorded automatically by forge, use 'forge test -m <testName> -vvv' to see the results
     }

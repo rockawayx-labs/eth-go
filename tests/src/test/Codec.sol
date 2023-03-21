@@ -356,6 +356,12 @@ contract CodecTest is Test {
         require(logs.length == 1, "Logs length invalid");
 
         assertEq(logs[0].topics.length, 1);
+
+        // We keept both for reference documentation of the event ID
+        assertEq(
+            logs[0].topics[0],
+            0xae8abdcc248ceb1263d6850d955eef93d14c59779f2aa0c12594bb7d8cc7f0e0
+        );
         assertEq(logs[0].topics[0], keccak256("EventUTuple1((address))"));
 
         codec.logBytes(logs[0].data);
@@ -364,6 +370,65 @@ contract CodecTest is Test {
             bytesEquals(
                 logs[0].data,
                 hex"000000000000000000000000db0de9288cf0713de91371969efcc9969dd94117"
+            ),
+            "Invalid input encode packed bytes"
+        );
+    }
+
+    function testEmitEventUArrayBool() public {
+        vm.recordLogs();
+
+        codec.emitEventUArrayBool();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 1, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 1);
+
+        // We keept both for reference documentation of the event ID
+        assertEq(
+            logs[0].topics[0],
+            0xee0cd0e55d575e4e32db712d239532b1104938ed2971f10d8b63e4aa4c17afb6
+        );
+        assertEq(logs[0].topics[0], keccak256("EventUArrayBool(bool[])"));
+
+        codec.logBytes(logs[0].data);
+
+        require(
+            bytesEquals(
+                logs[0].data,
+                hex"0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            "Invalid input encode packed bytes"
+        );
+    }
+
+    function testEmitEventUFixedArrayString() public {
+        vm.recordLogs();
+
+        codec.emitEventUFixedArrayString();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 1, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 1);
+
+        // We keept both for reference documentation of the event ID
+        assertEq(
+            logs[0].topics[0],
+            0x2f66d1a00558d55ced0f61b550ca490f9718523b5181b89c06b24ed7752e137c
+        );
+        assertEq(
+            logs[0].topics[0],
+            keccak256("EventUFixedArrayString(string[2])")
+        );
+
+        codec.logBytes(logs[0].data);
+
+        require(
+            bytesEquals(
+                logs[0].data,
+                hex"0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000005666972737400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067365636f6e640000000000000000000000000000000000000000000000000000"
             ),
             "Invalid input encode packed bytes"
         );
