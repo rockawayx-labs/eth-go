@@ -12,6 +12,11 @@ contract Codec {
         bytes32 param3
     );
 
+    function funDynamicBoolArray(bool[] calldata param0) public pure {
+        assert(param0[0]);
+        assert(!param0[1]);
+    }
+
     function funFixedArraySubFixed(address[2] calldata) public pure {}
 
     function funFixedArraySubDynamic(bytes[2] calldata) public pure {}
@@ -89,6 +94,18 @@ contract Codec {
         emit EventUTuple1(tuple);
     }
 
+    struct TupleBool {
+        bool param0;
+    }
+
+    event EventUTupleBool(TupleBool param0);
+
+    function emitEventUTupleBool() public {
+        TupleBool memory tuple = TupleBool(true);
+
+        emit EventUTupleBool(tuple);
+    }
+
     event EventUArrayBool(bool[] param0);
 
     function emitEventUArrayBool() public {
@@ -107,6 +124,16 @@ contract Codec {
         strings[1] = "second";
 
         emit EventUFixedArrayString(strings);
+    }
+
+    event EventUFixedArrayBool(bool[2] param0);
+
+    function emitEventUFixedArrayBool() public {
+        bool[2] memory bools;
+        bools[0] = true;
+        bools[1] = false;
+
+        emit EventUFixedArrayBool(bools);
     }
 
     function logBytes(bytes memory data) public pure {

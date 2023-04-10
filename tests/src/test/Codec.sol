@@ -35,6 +35,30 @@ contract CodecTest is Test {
         require(success, "call should have succeeed");
     }
 
+    function testFunDynamicBoolArray() public {
+        bool[] memory input = new bool[](2);
+        input[0] = true;
+        input[1] = false;
+
+        bytes memory actual = abi.encodeWithSignature(
+            "funDynamicBoolArray(bool[])",
+            input
+        );
+
+        codec.logBytes(actual);
+
+        require(
+            bytesEquals(
+                actual,
+                hex"b0e615780000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            "Invalid input encode packed bytes"
+        );
+
+        (bool success, ) = address(codec).call(actual);
+        require(success, "call should have succeeed");
+    }
+
     function testFunFixedArraySubDynamic() public {
         bytes memory bytes_0 = hex"aaaaaaaaaa";
         bytes memory bytes_1 = hex"ffffffffff";
@@ -375,6 +399,34 @@ contract CodecTest is Test {
         );
     }
 
+    function testEmitEventUTupleBool() public {
+        vm.recordLogs();
+
+        codec.emitEventUTupleBool();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 1, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 1);
+
+        // We keept both for reference documentation of the event ID
+        assertEq(
+            logs[0].topics[0],
+            0xe46e0615228a85d593cefeae9bb5f9d1b6698858b635d549b40492afb258ff23
+        );
+        assertEq(logs[0].topics[0], keccak256("EventUTupleBool((bool))"));
+
+        codec.logBytes(logs[0].data);
+
+        require(
+            bytesEquals(
+                logs[0].data,
+                hex"0000000000000000000000000000000000000000000000000000000000000001"
+            ),
+            "Invalid input encode packed bytes"
+        );
+    }
+
     function testEmitEventUArrayBool() public {
         vm.recordLogs();
 
@@ -429,6 +481,34 @@ contract CodecTest is Test {
             bytesEquals(
                 logs[0].data,
                 hex"0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000005666972737400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067365636f6e640000000000000000000000000000000000000000000000000000"
+            ),
+            "Invalid input encode packed bytes"
+        );
+    }
+
+    function testEmitEventUFixedArrayBool() public {
+        vm.recordLogs();
+
+        codec.emitEventUFixedArrayBool();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 1, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 1);
+
+        // We keept both for reference documentation of the event ID
+        assertEq(
+            logs[0].topics[0],
+            0x7105c6c17f0acf302d800b9cb7b8d17a738e2ed9fa7a4a02416262a25461be5d
+        );
+        assertEq(logs[0].topics[0], keccak256("EventUFixedArrayBool(bool[2])"));
+
+        codec.logBytes(logs[0].data);
+
+        require(
+            bytesEquals(
+                logs[0].data,
+                hex"00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
             ),
             "Invalid input encode packed bytes"
         );
