@@ -49,7 +49,7 @@ func TestLogDecoder_ReadTypedTopic(t *testing.T) {
 	log := &Log{
 		Address:    MustNewAddress(l.Address),
 		Topics:     topics,
-		Data:       MustNewAddress(l.Data),
+		Data:       MustNewBytes(l.Data),
 		Index:      0,
 		BlockIndex: 0,
 	}

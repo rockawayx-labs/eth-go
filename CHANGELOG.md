@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- **Breaking** `eth.MustNewAddress` is now strict in argument it accepts, the received input must have exactly 20 bytes once decoded. You can find back the previous behavior by using `MustNewAddressLoose` that has been added.
+
+- **Breaking** `eth.NewAddress` is now strict in argument it accepts, the received input must have exactly 20 bytes once decoded. You can find back the previous behavior by using `NewAddressLoose` that has been added.
+
 - JSON-RPC code `-32602` is now treated as a deterministic error.
 
 - **Breaking** The `ABI` has changed so that multiple events/functions of the name or same id are parsed correctly, in order defined.
@@ -33,6 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `rpc.BlockRef` decoding fixed to support either a `BlockNumber` or a `BlockHash`
 
 ### Added
+
+- Added `NewAddressLoose` that accepts address that might contain less or more than 20 bytes.
 
 - Added improved type information on `LogEventDef`.
 

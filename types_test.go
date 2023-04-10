@@ -28,7 +28,11 @@ import (
 )
 
 func TestAddress_New(t *testing.T) {
-	testNew(t, func(in string) (fmt.Stringer, error) { return NewAddress(in) })
+	testNewStrict(t, 20, func(in string) (fmt.Stringer, error) { return NewAddress(in) })
+}
+
+func TestAddressLoose_New(t *testing.T) {
+	testNew(t, func(in string) (fmt.Stringer, error) { return NewAddressLoose(in) })
 }
 
 func TestHex_New(t *testing.T) {
@@ -48,6 +52,46 @@ func testNew(t *testing.T, new func(in string) (fmt.Stringer, error)) {
 	}{
 		{"standard", "0xab", "ab", nil},
 		{"odd length", "0xa", "0a", nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			value, err := new(test.in)
+			if test.expectedErr == nil {
+				require.NoError(t, err)
+				assert.Equal(t, test.expected, value.String())
+			} else {
+				assert.Equal(t, test.expectedErr, err)
+			}
+		})
+	}
+}
+
+func testNewStrict(t *testing.T, strictLength int, new func(in string) (fmt.Stringer, error)) {
+	repeat := func(in string, times int) string {
+		out := make([]byte, len(in)*times)
+		for offset := 0; offset < len(in)*times; offset += len(in) {
+			copy(out[offset:offset+len(in)], []byte(in))
+		}
+
+		return string(out)
+	}
+
+	fillerBelow := repeat("00", strictLength-1)
+	fillerAbove := repeat("00", strictLength+1)
+
+	tests := []struct {
+		name        string
+		in          string
+		expected    string
+		expectedErr error
+	}{
+		{"standard", "0xab" + fillerBelow, "ab" + fillerBelow, nil},
+		{"odd length", "0xa" + fillerBelow, "0a" + fillerBelow, nil},
+		{"bytes too low, prefixed", "0x" + fillerBelow, "", errors.New("invalid length in bytes, wanted 20 bytes once decoded but decoding gave us 19 bytes")},
+		{"bytes too low, unprefixed", fillerBelow, "", errors.New("invalid length in bytes, wanted 20 bytes once decoded but decoding gave us 19 bytes")},
+		{"bytes too high, prefixed", "0x" + fillerAbove, "", errors.New("invalid length in bytes, wanted 20 bytes once decoded but decoding gave us 21 bytes")},
+		{"bytes too high, unprefixed", fillerAbove, "", errors.New("invalid length in bytes, wanted 20 bytes once decoded but decoding gave us 21 bytes")},
 	}
 
 	for _, test := range tests {

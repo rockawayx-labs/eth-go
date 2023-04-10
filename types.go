@@ -324,6 +324,9 @@ func (h *Hash) UnmarshalText(data []byte) error { return (*byteSlice)(h).Unmarsh
 
 type Address []byte
 
+// MustNewAddress is exactly like [NewAddress] but it panics if an error occurrs.
+//
+// See [NewAdress] for detaiks.
 func MustNewAddress(input string) Address {
 	out, err := NewAddress(input)
 	if err != nil {
@@ -333,7 +336,40 @@ func MustNewAddress(input string) Address {
 	return out
 }
 
+// MustNewAddressLoose is exactly like [NewAddressLoose] but it panics if an error occurrs.
+//
+// See [NewAddressLoose] for detaiks.
+func MustNewAddressLoose(input string) Address {
+	out, err := NewAddressLoose(input)
+	if err != nil {
+		panic(err)
+	}
+
+	return out
+}
+
+// NewAddress creates an address where the input **must** contain exactly 20 bytes.
+//
+// If the actual input is not an hexadecimal string, an error is returned or the decoded
+// lenght is not exactly 20 bytes, an error is returned.
 func NewAddress(input string) (Address, error) {
+	out, err := newByteSlice("address", input)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out) != 20 {
+		return nil, fmt.Errorf("invalid length in bytes, wanted 20 bytes once decoded but decoding gave us %d bytes", len(out))
+	}
+
+	return Address(out), nil
+}
+
+// NewAddressLoose creates an address where the input can contain more than 20 bytes (truncated) or
+// less than 20 bytes (left as-is).
+//
+// If the actual input is not an hexadecimal string, an error is returned.
+func NewAddressLoose(input string) (Address, error) {
 	out, err := newByteSlice("address", input)
 	if err != nil {
 		return nil, err

@@ -33,7 +33,7 @@ func TestRPC_ErrorHandling(t *testing.T) {
 	defer closer()
 
 	client := NewClient(server.URL)
-	_, err := client.Call(context.Background(), CallParams{To: eth.MustNewAddress("0x2")})
+	_, err := client.Call(context.Background(), CallParams{To: eth.MustNewAddressLoose("0x2")})
 
 	assert.Equal(t, &ErrResponse{Code: -32000, Message: "invalid error"}, err)
 }
@@ -54,7 +54,7 @@ func TestRPC_Call(t *testing.T) {
 	}{
 		{
 			name: "only to",
-			in:   CallParams{To: eth.MustNewAddress("0x2")},
+			in:   CallParams{To: eth.MustNewAddressLoose("0x2")},
 			expected: map[string]interface{}{"id": "0x1", "jsonrpc": "2.0", "method": "eth_call", "params": []interface{}{
 				map[string]interface{}{"to": "0x02"},
 				"latest",
@@ -63,7 +63,7 @@ func TestRPC_Call(t *testing.T) {
 		},
 		{
 			name: "from",
-			in:   CallParams{From: eth.MustNewAddress("0x1")},
+			in:   CallParams{From: eth.MustNewAddressLoose("0x1")},
 			expected: map[string]interface{}{"id": "0x1", "jsonrpc": "2.0", "method": "eth_call", "params": []interface{}{
 				map[string]interface{}{"from": "0x01"},
 				"latest",
