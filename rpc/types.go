@@ -233,6 +233,8 @@ type TransactionReceipt struct {
 	To *eth.Address `json:"to,omitempty"`
 	// CumulativeGasUsed is the the total amount of gas used when this transaction was executed in the block.
 	CumulativeGasUsed eth.Uint64 `json:"cumulativeGasUsed"`
+	// EffectiveGasPrice is the sum of the base fee and tip paid per unit of gas.
+	EffectiveGasPrice eth.Uint64 `json:"effectiveGasPrice"`
 	// GasUsed is the the amount of gas used by this specific transaction alone.
 	GasUsed eth.Uint64 `json:"gasUsed"`
 	// ContractAddress is the the contract address created, if the transaction was a contract creation, otherwise - null.
@@ -241,6 +243,13 @@ type TransactionReceipt struct {
 	Logs []*LogEntry `json:"logs"`
 	// LogsBloom is the Bloom filter for light clients to quickly retrieve related logs.
 	LogsBloom eth.Hex `json:"logsBloom"`
+	// Type is the transaction type, 0x0 for legacy transactions, 0x1 for access list types, 0x2 for dynamic fees
+	Type eth.Uint64 `json:"type"`
+
+	// Root: 32 bytes of post-transaction stateroot (pre Byzantium)
+	Root eth.Hash `json:"root"`
+	// Status is either 1 (success) or 0 (failure) (post Byzantium)
+	Status eth.Uint64 `json:"status"`
 }
 
 // Transaction retrieve from `eth_getBlockByXXX` methods.
