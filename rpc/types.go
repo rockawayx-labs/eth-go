@@ -13,6 +13,7 @@ import (
 var LatestBlock = &BlockRef{tag: "latest"}
 var PendingBlock = &BlockRef{tag: "pending"}
 var EarliestBlock = &BlockRef{tag: "earliest"}
+var FinalizedBlock = &BlockRef{tag: "finalized"}
 
 type BlockRef struct {
 	tag   string
@@ -62,6 +63,10 @@ func (b *BlockRef) IsLatest() bool {
 
 func (b *BlockRef) IsEarliest() bool {
 	return b == EarliestBlock || b.tag == EarliestBlock.tag
+}
+
+func (b *BlockRef) IsFinalized() bool {
+	return b == FinalizedBlock || b.tag == FinalizedBlock.tag
 }
 
 func (b *BlockRef) IsPending() bool {
@@ -136,6 +141,10 @@ func (b *BlockRef) UnmarshalText(text []byte) error {
 
 	if lowerTextString == PendingBlock.tag {
 		*b = *PendingBlock
+		return nil
+	}
+	if lowerTextString == FinalizedBlock.tag {
+		*b = *FinalizedBlock
 		return nil
 	}
 

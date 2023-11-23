@@ -267,6 +267,23 @@ func (c *Client) LatestBlockNum(ctx context.Context) (uint64, error) {
 	return value, nil
 }
 
+func (c *Client) FinalizeBlockNum(ctx context.Context) (uint64, error) {
+	resp, err := c.DoRequest(ctx, "eth_blockNumber", []interface{}{
+		FinalizedBlock.tag, // 436
+		true,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("unable to perform eth_blockNumber request: %w", err)
+	}
+
+	value, err := strconv.ParseUint(resp, 0, 64)
+	if err != nil {
+		return 0, fmt.Errorf("unable to parse block number %s: %w", resp, err)
+	}
+
+	return value, nil
+}
+
 type CallParams struct {
 	// From the address the transaction is sent from (optional).
 	From eth.Address `json:"from,omitempty"`
