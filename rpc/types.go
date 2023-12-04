@@ -357,12 +357,12 @@ type Block struct {
 // `rpc.WithGetBlockFullTransaction`).
 type BlockTransactions struct {
 	hashes       []eth.Hash
-	transactions []Transaction
+	Transactions []Transaction
 }
 
 func NewBlockTransactions() *BlockTransactions {
 	return &BlockTransactions{
-		transactions: make([]Transaction, 0),
+		Transactions: make([]Transaction, 0),
 	}
 }
 
@@ -376,11 +376,11 @@ func (txs *BlockTransactions) MarshalJSONRPC() ([]byte, error) {
 
 func (txs *BlockTransactions) marshalJSON(marshaller func(v interface{}) ([]byte, error)) ([]byte, error) {
 	if len(txs.hashes) == 0 {
-		if len(txs.transactions) == 0 {
+		if len(txs.Transactions) == 0 {
 			return []byte(`[]`), nil
 		}
 
-		return marshaller(txs.transactions)
+		return marshaller(txs.Transactions)
 	}
 
 	return marshaller(txs.hashes)
@@ -403,7 +403,7 @@ func (txs *BlockTransactions) UnmarshalJSON(data []byte) error {
 	}
 
 	if result.IsObject() {
-		return json.Unmarshal(data, &txs.transactions)
+		return json.Unmarshal(data, &txs.Transactions)
 	}
 
 	return fmt.Errorf("expected JSON array of either string or JSON object, got JSON array of %s", result.Type)
@@ -411,12 +411,12 @@ func (txs *BlockTransactions) UnmarshalJSON(data []byte) error {
 
 func (txs *BlockTransactions) Hashes() (out []eth.Hash) {
 	if len(txs.hashes) == 0 {
-		if len(txs.transactions) == 0 {
+		if len(txs.Transactions) == 0 {
 			return nil
 		}
 
-		out = make([]eth.Hash, len(txs.transactions))
-		for i, receipt := range txs.transactions {
+		out = make([]eth.Hash, len(txs.Transactions))
+		for i, receipt := range txs.Transactions {
 			out[i] = receipt.Hash
 		}
 		return
@@ -426,11 +426,11 @@ func (txs *BlockTransactions) Hashes() (out []eth.Hash) {
 }
 
 func (txs *BlockTransactions) Receipts() (out []Transaction, found bool) {
-	if len(txs.transactions) == 0 {
+	if len(txs.Transactions) == 0 {
 		// We assume we were full is there is no hashes neither, in which case we assume it's ok to say we were full
 		return nil, len(txs.hashes) == 0
 	}
 
 	// If we have receipts, it's sure we have full state
-	return txs.transactions, true
+	return txs.Transactions, true
 }
