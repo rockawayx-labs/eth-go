@@ -1,6 +1,8 @@
 pragma solidity 0.8.10;
 
 contract Codec {
+    uint256 _nextId;
+
     event EventUFixedArraySubFixed(address[2] param0);
 
     event EventUFixedArraySubDynamic(bytes[2] param0);
@@ -28,6 +30,12 @@ contract Codec {
         bytes32
     ) public pure {}
 
+    function mint() public returns (uint256 tokenId, uint256 nextId) {
+        logMint((tokenId = _nextId++));
+
+        return (tokenId, _nextId);
+    }
+
     function funReturnsString() public pure returns (string memory) {
         return "test";
     }
@@ -43,6 +51,8 @@ contract Codec {
     function funInt8(int8) public pure {}
 
     function funInt32(int32) public pure {}
+
+    function funInt128(int128) public pure {}
 
     function funInt256(int256) public pure {}
 
@@ -134,6 +144,12 @@ contract Codec {
         bools[1] = false;
 
         emit EventUFixedArrayBool(bools);
+    }
+
+    event EventMint(uint256 indexed tokenID);
+
+    function logMint(uint256 id) public {
+        emit EventMint(id);
     }
 
     function logBytes(bytes memory data) public pure {

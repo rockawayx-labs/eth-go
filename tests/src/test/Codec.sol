@@ -114,6 +114,29 @@ contract CodecTest is Test {
         require(success, "call should have succeeed");
     }
 
+    function testMint() public {
+        vm.recordLogs();
+
+        (uint256 tokenId, uint256 nextId) = codec.mint();
+
+        require(tokenId == 0, "Invalid tokenId result");
+        require(nextId == 1, "Invalid nextId result");
+
+        (uint256 tokenIdSecond, uint256 nextIdSecond) = codec.mint();
+
+        require(tokenIdSecond == 1, "Invalid tokenId result");
+        require(nextIdSecond == 2, "Invalid nextId result");
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        require(logs.length == 2, "Logs length invalid");
+
+        assertEq(logs[0].topics.length, 2);
+        assertEq(logs[0].topics[1], bytes32(uint256(0)));
+
+        assertEq(logs[1].topics.length, 2);
+        assertEq(logs[1].topics[1], bytes32(uint256(1)));
+    }
+
     function testFunInt8() public {
         int8 value = -127;
 
@@ -144,6 +167,50 @@ contract CodecTest is Test {
             bytesEquals(
                 actual,
                 hex"d78caab3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffca6c36dd"
+            ),
+            "Invalid input encode packed bytes"
+        );
+
+        (bool success, ) = address(codec).call(actual);
+        require(success, "call should have succeeed");
+    }
+
+    function testFunInt128Value0() public {
+        int128 value = 0;
+
+        bytes memory actual = abi.encodeWithSignature(
+            "funInt128(int128)",
+            value
+        );
+
+        codec.logBytes(actual);
+
+        require(
+            bytesEquals(
+                actual,
+                hex"5b3357ff0000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            "Invalid input encode packed bytes"
+        );
+
+        (bool success, ) = address(codec).call(actual);
+        require(success, "call should have succeeed");
+    }
+
+    function testFunInt128ValueMinus1() public {
+        int128 value = -1;
+
+        bytes memory actual = abi.encodeWithSignature(
+            "funInt128(int128)",
+            value
+        );
+
+        codec.logBytes(actual);
+
+        require(
+            bytesEquals(
+                actual,
+                hex"5b3357ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
             ),
             "Invalid input encode packed bytes"
         );
