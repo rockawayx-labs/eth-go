@@ -258,7 +258,7 @@ type TransactionReceipt struct {
 	// Root: 32 bytes of post-transaction stateroot (pre Byzantium)
 	Root eth.Hash `json:"root"`
 	// Status is either 1 (success) or 0 (failure) (post Byzantium)
-	Status eth.Uint64 `json:"status"`
+	Status *eth.Uint64 `json:"status"`
 }
 
 // Transaction retrieve from `eth_getBlockByXXX` methods.
