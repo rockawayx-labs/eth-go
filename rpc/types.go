@@ -349,6 +349,19 @@ type Block struct {
 	Transactions     *BlockTransactions `json:"transactions,omitempty"`
 	UnclesSHA3       eth.Hash           `json:"sha3Uncles,omitempty"`
 	Uncles           []eth.Hash         `json:"uncles,omitempty"`
+
+	BlobGasUsed           *eth.Uint256 `json:"blobGasUsed,omitempty"`           // EIP-4844
+	ExcessBlobGas         *eth.Uint256 `json:"excessBlobGas,omitempty"`         // EIP-4844
+	ParentBeaconBlockRoot *eth.Hash    `json:"parentBeaconBlockRoot,omitempty"` // EIP-4844
+	WithdrawalsHash       *eth.Hash    `json:"withdrawalsHash,omitempty"`       // EIP-4895
+	Withdrawals           []Withdrawal `json:"withdrawals,omitempty"`           // EIP-4895
+}
+
+type Withdrawal struct {
+	Index     eth.Uint64  `json:"index"`          // monotonically increasing identifier issued by consensus layer
+	Validator eth.Uint64  `json:"validatorIndex"` // index of validator associated with withdrawal
+	Address   eth.Address `json:"address"`        // target address for withdrawn ether
+	Amount    eth.Uint64  `json:"amount"`         // value of withdrawal in Gwei
 }
 
 // BlockTransactions is a dynamic types and can be either a list of transactions hashes,
