@@ -350,8 +350,8 @@ type Block struct {
 	UnclesSHA3       eth.Hash           `json:"sha3Uncles,omitempty"`
 	Uncles           []eth.Hash         `json:"uncles,omitempty"`
 
-	BlobGasUsed           *eth.Uint256 `json:"blobGasUsed,omitempty"`           // EIP-4844
-	ExcessBlobGas         *eth.Uint256 `json:"excessBlobGas,omitempty"`         // EIP-4844
+	BlobGasUsed           *eth.Uint64  `json:"blobGasUsed,omitempty"`           // EIP-4844
+	ExcessBlobGas         *eth.Uint64  `json:"excessBlobGas,omitempty"`         // EIP-4844
 	ParentBeaconBlockRoot *eth.Hash    `json:"parentBeaconBlockRoot,omitempty"` // EIP-4844
 	WithdrawalsHash       *eth.Hash    `json:"withdrawalsHash,omitempty"`       // EIP-4895
 	Withdrawals           []Withdrawal `json:"withdrawals,omitempty"`           // EIP-4895
