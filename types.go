@@ -170,6 +170,18 @@ func parseUint(text string, bitSize int) (uint64, error) {
 	return value, nil
 }
 
+type Int int
+
+func (b *Int) UnmarshalText(text []byte) error {
+	value, err := parseInt(string(text), 8)
+	if err != nil {
+		return err
+	}
+
+	*b = Int(value)
+	return nil
+}
+
 type Int8 int8
 
 func (b *Int8) UnmarshalText(text []byte) error {

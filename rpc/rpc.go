@@ -465,8 +465,8 @@ type RPCRequest struct {
 	Method  string        `json:"method"`
 	decoder ResponseDecoder
 
-	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id"`
+	JSONRPC string  `json:"jsonrpc"`
+	ID      eth.Int `json:"id"`
 }
 
 type RPCResponse struct {
@@ -591,7 +591,7 @@ func (c *Client) DoRequests(ctx context.Context, reqs []*RPCRequest) ([]*RPCResp
 	// we need IDs to be sorted
 	for _, req := range reqs {
 		lastID++
-		req.ID = lastID
+		req.ID = eth.Int(lastID)
 		req.JSONRPC = "2.0"
 	}
 
