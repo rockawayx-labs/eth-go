@@ -9,7 +9,7 @@ import (
 	"github.com/streamingfast/eth-go/rpc"
 )
 
-func ExampleRPC_GetBlockByNumber() {
+func Example_rpc_getBlockByNumber() {
 	client := rpc.NewClient(getRPCURL())
 	blockRef := rpc.LatestBlock
 	if os.Getenv("ETH_GO_RPC_BLOCK_NUMBER") != "" {
