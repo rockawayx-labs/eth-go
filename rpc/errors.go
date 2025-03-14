@@ -41,6 +41,7 @@ func (e *ErrResponse) Error() string {
 // Ganache.
 // These come from https://github.com/graphprotocol/graph-node/blob/94e93b07554d6e77aa618ac2f0716b70e0af671c/chain/ethereum/src/ethereum_adapter.rs#L500
 
+const JSON_RPC_INVALID_REQUEST_ERROR = -32600
 const JSON_RPC_INVALID_ARGUMENT_ERROR = -32602
 
 var GETH_DETERMINISTIC_ERRORS = []string{
@@ -85,7 +86,7 @@ func IsDeterministicError(err *ErrResponse) bool {
 }
 
 func IsGenericDeterministicError(err *ErrResponse) bool {
-	return err.Code == JSON_RPC_INVALID_ARGUMENT_ERROR
+	return err.Code == JSON_RPC_INVALID_ARGUMENT_ERROR || err.Code == JSON_RPC_INVALID_REQUEST_ERROR
 }
 
 func IsGethDeterministicError(err *ErrResponse) bool {
