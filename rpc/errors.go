@@ -62,6 +62,7 @@ const PARITY_BAD_INSTRUCTION_FD = "Bad instruction fd"
 const PARITY_BAD_JUMP_PREFIX = "Bad jump"
 const PARITY_STACK_LIMIT_PREFIX = "Out of stack"
 const PARITY_OUT_OF_GAS = "Out of gas"
+const PARITY_OUT_OF_BOUND = "return data out of bounds"
 const PARITY_VM_EXECUTION_ERROR = -32015
 const PARITY_REVERT_PREFIX = "Reverted 0x"
 
@@ -108,13 +109,18 @@ func IsParityDeterministicError(err *ErrResponse) bool {
 		return true
 	}
 
+	if err.Code == -32000 && err.Message == PARITY_OUT_OF_BOUND {
+		return true
+	}
+
 	if err.Message == PARITY_BAD_INSTRUCTION_FD ||
 		err.Message == PARITY_BAD_INSTRUCTION_FE {
 		return true
 	}
 
 	if strings.HasPrefix(err.Message, PARITY_BAD_JUMP_PREFIX) ||
-		strings.HasPrefix(err.Message, PARITY_STACK_LIMIT_PREFIX) {
+		strings.HasPrefix(err.Message, PARITY_STACK_LIMIT_PREFIX) ||
+		strings.HasPrefix(err.Message, PARITY_REVERT_PREFIX) {
 		return true
 	}
 
