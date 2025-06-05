@@ -162,11 +162,13 @@ func TestDecodeBlockWith0prefixedTrx(t *testing.T) {
   "transactions": [
     {
       "s": "0x01554cd99ddae8a88eb0ed71aaa2a8bb6450694211018b826be2d6bdaf12c48a",
-      "r": "0x01554cd99ddae8a88eb0ed71aaa2a8bb6450694211018b826be2d6bdaf12c48a",
-      "v": "0x021b"
+      "r": "0x0",
+      "v": "0x021b",
+      "value": "0x00000000"
     }
   ]
 }`), &block)
+	require.NoError(t, err)
 	txt, err := block.Transactions.Transactions[0].S.MarshalText()
 	require.NoError(t, err)
 	assert.Equal(t, "0x1554cd99ddae8a88eb0ed71aaa2a8bb6450694211018b826be2d6bdaf12c48a", string(txt)) // 0 prefix is not used when printing

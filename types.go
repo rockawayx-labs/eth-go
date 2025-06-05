@@ -79,8 +79,13 @@ func (b *Uint64) UnmarshalText(text []byte) error {
 type Uint256 uint256.Int
 
 func (b *Uint256) UnmarshalText(text []byte) error {
-	// we want to remove "0x0..." or "0x000", then we add back the leading "0x"
-	text = append([]byte{'0', 'x'}, bytes.TrimLeft(text, "0x")...)
+	// we want to remove "0x0" (and any other zeroes) then we add back the leading "0x"
+	noZero := bytes.TrimLeft(text, "0x")
+	if len(noZero) == 0 {
+		text = []byte{'0', 'x', '0'}
+	} else {
+		text = append([]byte{'0', 'x'}, noZero...)
+	}
 	return (*uint256.Int)(b).UnmarshalText(text)
 }
 
