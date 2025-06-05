@@ -40,15 +40,16 @@ type Option func(*Client)
 
 // TODO: refactor to use mux rpc
 type Client struct {
-	endpoint string
-	chainID  *big.Int
-
+	endpoint   string
+	chainID    *big.Int
+	headers    map[string]string
 	httpClient *http.Client
 }
 
 func NewClient(endpointURL string, opts ...Option) *Client {
 	c := &Client{
 		endpoint: endpointURL,
+		headers:  make(map[string]string),
 	}
 
 	c.httpClient = http.DefaultClient
@@ -58,6 +59,12 @@ func NewClient(endpointURL string, opts ...Option) *Client {
 	}
 
 	return c
+}
+
+func WithHttpHeader(key, val string) Option {
+	return func(client *Client) {
+		client.headers[key] = val
+	}
 }
 
 func WithHttpClient(httpClient *http.Client) Option {
@@ -683,6 +690,10 @@ func (c *Client) post(ctx context.Context, url string, body io.Reader) (resp *ht
 	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
 	if err != nil {
 		return nil, err
+	}
+
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
