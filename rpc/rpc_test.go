@@ -156,6 +156,23 @@ func TestRPC_SendRaw(t *testing.T) {
 	}
 }
 
+func TestDecodeBlockWith0prefixedTrx(t *testing.T) {
+	var block *Block
+	err := json.Unmarshal([]byte(`{
+  "transactions": [
+    {
+      "s": "0x01554cd99ddae8a88eb0ed71aaa2a8bb6450694211018b826be2d6bdaf12c48a",
+      "r": "0x01554cd99ddae8a88eb0ed71aaa2a8bb6450694211018b826be2d6bdaf12c48a",
+      "v": "0x021b"
+    }
+  ]
+}`), &block)
+	txt, err := block.Transactions.Transactions[0].S.MarshalText()
+	require.NoError(t, err)
+	assert.Equal(t, "0x1554cd99ddae8a88eb0ed71aaa2a8bb6450694211018b826be2d6bdaf12c48a", string(txt)) // 0 prefix is not used when printing
+	require.NoError(t, err)
+}
+
 type mockJSONRPCServer struct {
 	*httptest.Server
 	body []byte

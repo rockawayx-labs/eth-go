@@ -15,6 +15,7 @@
 package eth
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -78,6 +79,8 @@ func (b *Uint64) UnmarshalText(text []byte) error {
 type Uint256 uint256.Int
 
 func (b *Uint256) UnmarshalText(text []byte) error {
+	// we want to remove "0x0..." or "0x000", then we add back the leading "0x"
+	text = append([]byte{'0', 'x'}, bytes.TrimLeft(text, "0x")...)
 	return (*uint256.Int)(b).UnmarshalText(text)
 }
 
