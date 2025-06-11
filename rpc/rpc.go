@@ -87,6 +87,9 @@ type LogsParams struct {
 
 	// Topics are order-dependent, each topic can also be an array of DATA with "or" options (optional).
 	Topics *TopicFilter `json:"topics,omitempty"`
+
+	// BlockHash is the block hash encoded as a hex string with prefix '0x'
+	BlockHash eth.Bytes `json:"blockHash,omitempty"`
 }
 
 type TopicFilter struct {
