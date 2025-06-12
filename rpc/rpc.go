@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/streamingfast/eth-go"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -28,7 +29,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/streamingfast/eth-go"
+	"github.com/rockawayx-labs/eth-go"
 	"github.com/streamingfast/logging"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
@@ -393,6 +394,27 @@ func (c *Client) TransactionReceipt(ctx context.Context, hash eth.Hash) (out *Tr
 	resp, err := c.DoRequest(ctx, "eth_getTransactionReceipt", []interface{}{hash})
 	if err != nil {
 		return nil, fmt.Errorf("unable to perform eth_getTransactionCount request: %w", err)
+	}
+
+	if resp == "" {
+		return nil, nil
+	}
+
+	err = json.Unmarshal([]byte(resp), &out)
+	if err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return out, nil
+}
+
+// BlockReceipts fetches the receipt associated with the block's hash received. If the
+// block is not found by the queried node, `nil, nil` is returned. If it's found, the receipt
+// is decoded and `receipt, nil` is returned. Otherwise, the RPC error is returned if something went wrong.
+func (c *Client) BlockReceipts(ctx context.Context, hash eth.Hash) (out []*TransactionReceipt, err error) {
+	resp, err := c.DoRequest(ctx, "eth_getBlockReceipts", []interface{}{hash})
+	if err != nil {
+		return nil, fmt.Errorf("unable to perform eth_getBlockReceipts request: %w", err)
 	}
 
 	if resp == "" {
