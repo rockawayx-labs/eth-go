@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/streamingfast/eth-go"
+	"github.com/rockawayx-labs/eth-go"
 	"github.com/tidwall/gjson"
 )
 

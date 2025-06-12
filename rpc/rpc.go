@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/streamingfast/eth-go"
+	"github.com/rockawayx-labs/eth-go"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -29,7 +29,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rockawayx-labs/eth-go"
 	"github.com/streamingfast/logging"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"

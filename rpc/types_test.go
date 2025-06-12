@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/streamingfast/eth-go"
+	"github.com/rockawayx-labs/eth-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

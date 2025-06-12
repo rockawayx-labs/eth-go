@@ -21,8 +21,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/streamingfast/eth-go"
-	"github.com/streamingfast/eth-go/rlp"
+	"github.com/rockawayx-labs/eth-go"
+	"github.com/rockawayx-labs/eth-go/rlp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

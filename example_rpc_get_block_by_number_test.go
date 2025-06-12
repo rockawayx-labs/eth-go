@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/streamingfast/eth-go/rpc"
+	"github.com/rockawayx-labs/eth-go/rpc"
 )
 
 func Example_rpc_getBlockByNumber() {

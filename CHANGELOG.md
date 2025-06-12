@@ -56,4 +56,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - `LogEventDef.LogID()` is now exposed publicly
 
-[unreleased]: https://github.com/streamingfast/eth-go
+[unreleased]: https://github.com/rockawayx-labs/eth-go

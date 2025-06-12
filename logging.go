@@ -18,4 +18,4 @@ import (
 	"github.com/streamingfast/logging"
 )
 
-var zlog, tracer = logging.PackageLogger("eth-go", "github.com/streamingfast/eth-go")
+var zlog, tracer = logging.PackageLogger("eth-go", "github.com/rockawayx-labs/eth-go")

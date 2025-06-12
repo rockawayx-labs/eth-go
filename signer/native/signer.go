@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/streamingfast/eth-go"
-	"github.com/streamingfast/eth-go/rlp"
+	"github.com/rockawayx-labs/eth-go"
+	"github.com/rockawayx-labs/eth-go/rlp"
 	"go.uber.org/zap"
 )
 
